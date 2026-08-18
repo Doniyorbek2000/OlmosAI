@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { Boxes, LayoutDashboard, Coins, FolderOpen, Wand2, LogOut, Image as ImageIcon, Type } from 'lucide-react';
+import { Boxes, LayoutDashboard, Coins, FolderOpen, Wand2, LogOut, Image as ImageIcon, Type, CreditCard } from 'lucide-react';
 import { api } from '@/lib/api';
 import { brand } from '@/lib/brand';
 import { cn } from '@/lib/utils';
@@ -22,6 +22,7 @@ const NAV = [
   { href: '/create/image-to-3d', label: 'Image to 3D', icon: ImageIcon },
   { href: '/projects', label: 'Projects', icon: FolderOpen },
   { href: '/assets', label: 'Assets', icon: Boxes },
+  { href: '/billing', label: 'Billing', icon: CreditCard },
 ];
 
 export function AppShell({ children }: { children: React.ReactNode }) {

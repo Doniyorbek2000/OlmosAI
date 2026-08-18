@@ -39,6 +39,8 @@ model User {
   role          UserRole   @default(USER)
   status        UserStatus @default(ACTIVE)
   locale        String     @default("en")
+  // Payment-provider customer id (e.g. Stripe) for portal + webhook linkage.
+  stripeCustomerId String? @unique
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
@@ -147,6 +149,8 @@ model Plan {
   description         String?
   priceCentsMonthly   Int     @default(0)
   currency            String  @default("usd")
+  stripePriceId       String? @unique
+  stripeProductId     String?
   monthlyCredits      Int     @default(0)
   storageGb           Int     @default(1)
   parallelGenerations Int     @default(1)
@@ -808,4 +812,18 @@ model SystemSetting {
   updatedAt DateTime @updatedAt
 
   @@map("system_settings")
+}
+
+// Idempotency ledger for inbound provider webhooks (Stripe, payment providers).
+// A given (provider, eventId) is processed at most once (spec §30, §32).
+model ProcessedWebhookEvent {
+  id        String   @id @default(uuid()) @db.Uuid
+  provider  String
+  eventId   String
+  type      String
+  createdAt DateTime @default(now())
+
+  @@unique([provider, eventId])
+  @@index([provider, type])
+  @@map("processed_webhook_events")
 }

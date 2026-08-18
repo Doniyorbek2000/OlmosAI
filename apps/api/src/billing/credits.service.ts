@@ -22,6 +22,33 @@ export class CreditsService {
   }
 
   /** Reserve credits for a job. Idempotent per (jobId, RESERVE). */
+  /**
+   * Grant credits (plan renewal, purchase, admin adjustment). Idempotent per
+   * `idempotencyKey` so a replayed payment webhook never double-grants. Creates
+   * the balance row if missing.
+   */
+  async grant(
+    userId: string,
+    amount: number,
+    reason: string,
+    idempotencyKey: string,
+  ): Promise<{ granted: boolean }> {
+    if (amount <= 0) return { granted: false };
+    return this.prisma.$transaction(async (tx) => {
+      const existing = await tx.creditTransaction.findUnique({ where: { idempotencyKey } });
+      if (existing) return { granted: false }; // replay — already granted
+      await tx.creditBalance.upsert({
+        where: { userId },
+        update: { balance: { increment: amount } },
+        create: { userId, balance: amount },
+      });
+      await tx.creditTransaction.create({
+        data: { userId, type: 'GRANT', amount, reason, idempotencyKey },
+      });
+      return { granted: true };
+    });
+  }
+
   async reserve(userId: string, jobId: string, amount: number): Promise<void> {
     if (amount <= 0) return;
     const key = `reserve:${jobId}`;

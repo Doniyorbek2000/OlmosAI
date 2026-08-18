@@ -8,7 +8,9 @@ import { AppConfigService } from './config/config.service';
 import { VeyraExceptionFilter } from './common/veyra-exception.filter';
 
 async function bootstrap(): Promise<void> {
-  const app = await NestFactory.create(AppModule, { bufferLogs: false });
+  // rawBody: true preserves the unparsed request body so the Stripe webhook
+  // controller can verify signatures over the exact bytes received.
+  const app = await NestFactory.create(AppModule, { bufferLogs: false, rawBody: true });
   const config = app.get(AppConfigService);
 
   app.use(helmet());

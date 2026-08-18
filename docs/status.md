@@ -50,9 +50,18 @@ Legend: ✅ implemented + tested · 🟩 implemented · 🟨 scaffolded/partial 
   encoder) + real text-to-image worker interface — tested
 - ⬜ Full AI-agent execution surface (parser + workflow selection are in place)
 
-## Phase 6 — Billing
-- ✅ Credit ledger: reserve/capture/release, transactional + idempotent — tested
-- 🟩 Plans/subscriptions schema + seed; Stripe adapter interface — webhooks planned
+## Phase 6 — Billing ✅
+- ✅ Credit ledger: reserve/capture/release + grant, transactional + idempotent — tested
+- ✅ Provider-agnostic PaymentProvider abstraction (Stripe adapter + Null adapter
+  for dev); subscription + credit-pack checkout, billing portal
+- ✅ Idempotent webhook handling: signature-verified, deduped by (provider,eventId)
+  via ProcessedWebhookEvent, credit grants keyed by event id (no double-grant) —
+  normalizer + event-application unit tested
+- ✅ Subscription lifecycle (activate/renew→grant monthly credits/update/cancel/
+  past-due), payment records, invoices read API
+- ✅ Plans DB-driven (+ Stripe price ids from env); credit packs config-driven
+- ✅ Billing web page (plans, packs, portal, transactions) + admin billing
+  aggregates (revenue, MRR, credits granted/consumed, plan breakdown)
 
 ## Phase 7 — Developer API
 - 🟩 API-key hashing/scopes/usage schema; documented endpoints

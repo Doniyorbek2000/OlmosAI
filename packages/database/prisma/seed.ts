@@ -86,10 +86,14 @@ const PROVIDERS = [
 
 async function main() {
   for (const plan of PLANS) {
+    // Attach the Stripe price id from env if provided (e.g. STRIPE_PRICE_PRO),
+    // so billing works per-environment without hardcoding ids.
+    const stripePriceId = process.env[`STRIPE_PRICE_${plan.key}`] || undefined;
+    const data = { ...plan, ...(stripePriceId ? { stripePriceId } : {}) };
     await prisma.plan.upsert({
       where: { key: plan.key },
-      update: plan,
-      create: plan,
+      update: data,
+      create: data,
     });
   }
   console.log(`Seeded ${PLANS.length} plans`);
