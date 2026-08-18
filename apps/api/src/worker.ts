@@ -7,7 +7,9 @@ import { AppModule } from './app.module';
 import { AppConfigService } from './config/config.service';
 import { GenerationProcessor } from './orchestrator/generation-processor.service';
 import { ProviderRegistryService } from './orchestrator/provider-registry.service';
+import { AssetProcessingProcessor } from './assets/asset-processing.processor';
 import type { GenerationJobData } from './generations/generation-queue';
+import type { AssetProcessingJobData } from './assets/asset-processing.queue';
 import { REDIS } from './redis/redis.module';
 
 /**
@@ -20,6 +22,7 @@ async function bootstrap(): Promise<void> {
   const app = await NestFactory.createApplicationContext(AppModule, { bufferLogs: false });
   const config = app.get(AppConfigService);
   const processor = app.get(GenerationProcessor);
+  const assetProcessor = app.get(AssetProcessingProcessor);
   const orchestrator = app.get(ProviderRegistryService);
   const redis = app.get<Redis>(REDIS);
 
@@ -28,14 +31,26 @@ async function bootstrap(): Promise<void> {
     QUEUE_NAMES.GENERATION,
     redis,
     async (job) => {
-      logger.log(`Processing job ${job.data.jobId}`);
+      logger.log(`Processing generation job ${job.data.jobId}`);
       await processor.process(job.data.jobId);
     },
     concurrency,
   );
-
   worker.on('failed', (job, err) => {
-    logger.error(`Job ${job?.data?.jobId} failed at queue level: ${err.message}`);
+    logger.error(`Generation job ${job?.data?.jobId} failed at queue level: ${err.message}`);
+  });
+
+  const assetWorker = startWorker<AssetProcessingJobData>(
+    QUEUE_NAMES.ASSET_PROCESSING,
+    redis,
+    async (job) => {
+      logger.log(`Processing asset job ${job.data.jobId}`);
+      await assetProcessor.process(job.data.jobId);
+    },
+    concurrency,
+  );
+  assetWorker.on('failed', (job, err) => {
+    logger.error(`Asset job ${job?.data?.jobId} failed at queue level: ${err.message}`);
   });
 
   // Periodic provider health refresh feeds routing + circuit breaking.
@@ -47,7 +62,7 @@ async function bootstrap(): Promise<void> {
 
   const shutdown = async () => {
     clearInterval(healthTimer);
-    await worker.close();
+    await Promise.all([worker.close(), assetWorker.close()]);
     await app.close();
     process.exit(0);
   };

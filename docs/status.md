@@ -29,8 +29,16 @@ Legend: ✅ implemented + tested · 🟩 implemented · 🟨 scaffolded/partial 
 - ✅ AssetQualityService (metrics, score, corrupt output not billed)
 
 ## Phase 4 — Asset processing & materials
-- 🟨 Asset-worker service dir + post-processing op list (Blender/trimesh) — pipeline planned
-- 🟨 PBR material model in schema + editor properties panel (edit ops planned)
+- ✅ Asset-worker (Python/trimesh, CPU-runnable): center/normalize/auto-orient/
+  remove-floaters/recalc-normals/smooth/decimate/remesh/optimize/LOD/collider/
+  convert (GLB/GLTF/OBJ/STL/PLY) — 12 pytest tests
+- ✅ Game-ready pipeline (spec §10): clean → optimize → decimate to budget →
+  LODs → collider → export; `/v1/assets/:id/{optimize,decimate,remesh,convert,
+  game-ready}` create versioned jobs (new AssetVersion, parent linkage, never
+  overwrite) with quality gate + credit reserve/capture/refund
+- ✅ Editor UI: Optimize / Decimate / Make-game-ready actions with live progress
+- 🟨 PBR material editing (schema + properties panel present; UV/bake need a
+  Blender step — documented, not silently substituted)
 
 ## Phase 5 — Text-to-3D & agent
 - ✅ Resumable workflow engine (DB-persisted stages, resume-from-last-success) — tested
@@ -74,8 +82,9 @@ implemented and tested; the geometry-optimization (retopo/decimate/LOD) asset
 pass is the remaining piece (Phase 4).
 
 ## Verification
-- 50 Node unit tests (types, config, ai-sdk router/breaker/executor, storage,
+- 54 Node unit tests (types, config, ai-sdk router/breaker/executor, storage,
   auth, api credit-ledger + mode-resolver + workflow-engine + prompt-parser +
-  png/concept-image) + 7 Python worker tests — all green
+  png/concept-image + game-ready) + 19 Python worker tests (7 generation, 12
+  asset-worker) — all green
 - `pnpm build`, `pnpm typecheck`, `pnpm test` pass; `next build` passes;
   Prisma schema validates; docker-compose config validates

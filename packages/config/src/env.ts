@@ -63,6 +63,7 @@ export const envSchema = z
     TRIPOSG_WORKER_URL: z.string().url().optional(),
     SF3D_WORKER_URL: z.string().url().optional(),
     HUNYUAN3D_WORKER_URL: z.string().url().optional(),
+    ASSET_WORKER_URL: z.string().url().optional(),
 
     // Provider enablement bootstrap
     PROVIDER_MOCK_ENABLED: boolFromEnv.default('false'),

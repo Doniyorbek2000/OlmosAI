@@ -53,7 +53,8 @@ export class AssetsController {
       orderBy: { version: 'desc' },
       include: { files: { where: { role: 'MODEL' } } },
     });
-    const file = version?.files[0];
+    // Prefer the main model (no channel) over LOD/collider variants.
+    const file = version?.files.find((f) => !f.channel) ?? version?.files[0];
     if (!file) throw new VeyraError(ErrorCode.NOT_FOUND, 'No downloadable model file');
     const url = await this.storage.presignDownload(
       file.storageKey,

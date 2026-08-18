@@ -10,6 +10,7 @@ import { ProcessingModule } from './orchestrator/processing.module';
 import { AssetsModule } from './assets/assets.module';
 import { JobsModule } from './jobs/jobs.module';
 import { GenerationQueueModule } from './generations/generation-queue';
+import { AssetProcessingQueueModule } from './assets/asset-processing.queue';
 import { AuthModule } from './auth/auth.module';
 import { ProjectsModule } from './projects/projects.module';
 import { UploadsModule } from './uploads/uploads.module';
@@ -31,6 +32,7 @@ import { RequestIdMiddleware } from './common/request-id.middleware';
     AssetsModule,
     JobsModule,
     GenerationQueueModule,
+    AssetProcessingQueueModule,
     // Features
     AuthModule,
     ProjectsModule,

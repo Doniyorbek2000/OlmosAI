@@ -57,6 +57,11 @@ jobs:
       - name: Pytest (procedural generator + worker app)
         working-directory: services/ai-workers/_shared
         run: pytest -q
+      - name: Install asset-worker deps + test
+        run: |
+          pip install -r services/asset-worker/requirements.txt
+          pip install pytest
+          cd services/asset-worker && pytest -q
 
   docker:
     name: Docker build (smoke)
