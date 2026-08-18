@@ -82,6 +82,8 @@ const PROVIDERS = [
   { providerId: 'trellis2', displayName: 'TRELLIS.2', enabled: false, priority: 100, licenseStatus: 'review_required' },
   { providerId: 'sf3d', displayName: 'Stable Fast 3D', enabled: false, priority: 55, licenseStatus: 'restricted' },
   { providerId: 'hunyuan3d', displayName: 'Hunyuan3D 2.1', enabled: false, priority: 70, licenseStatus: 'restricted' },
+  { providerId: 'hymotion', displayName: 'HY-Motion 1.0', enabled: false, priority: 40, licenseStatus: 'restricted_geo' },
+  { providerId: 'hyworld', displayName: 'HY-World 2.0', enabled: false, priority: 30, licenseStatus: 'restricted_geo' },
 ];
 
 async function main() {

@@ -62,6 +62,8 @@ model User {
   auditLogs      AuditLog[]
   settings       UserSetting?
   verifications  VerificationToken[]
+  animations     AnimationAsset[]
+  worlds         World[]
 
   @@index([status])
   @@index([deletedAt])
@@ -311,8 +313,10 @@ model Project {
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
-  assets Asset[]
-  jobs   GenerationJob[]
+  assets     Asset[]
+  jobs       GenerationJob[]
+  animations AnimationAsset[]
+  worlds     World[]
 
   @@index([userId, deletedAt])
   @@index([type])
@@ -357,6 +361,10 @@ model Asset {
   deletedAt DateTime?
 
   versions AssetVersion[]
+  // Animations attached to this asset when it is a CHARACTER.
+  animations AnimationAsset[] @relation("CharacterAnimations")
+  // Rig/skeleton metadata for CHARACTER assets (joints, hierarchy, bind pose).
+  rig Json?
 
   @@index([userId, deletedAt])
   @@index([projectId])
@@ -826,4 +834,106 @@ model ProcessedWebhookEvent {
   @@unique([provider, eventId])
   @@index([provider, type])
   @@map("processed_webhook_events")
+}
+
+// ============================================================================
+// CHARACTER / MOTION (Phase 9) — HY-Motion behind an adapter
+// ============================================================================
+
+// A generated (or uploaded) animation clip, optionally attached to a CHARACTER
+// asset. Kept separate from mesh AssetVersions because motion output is a
+// skeleton + keyframes, not geometry (spec §38).
+model AnimationAsset {
+  id               String  @id @default(uuid()) @db.Uuid
+  userId           String  @db.Uuid
+  user             User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  characterAssetId String? @db.Uuid
+  characterAsset   Asset?  @relation("CharacterAnimations", fields: [characterAssetId], references: [id], onDelete: SetNull)
+  projectId        String? @db.Uuid
+  project          Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+
+  name         String
+  source       String  @default("TEXT_MOTION") // TEXT_MOTION | UPLOAD
+  prompt       String?
+  providerId   String?
+  modelFamily  String?
+  modelVersion String?
+  seed         Int?
+
+  durationSeconds Float?
+  fps             Int?
+  frameCount      Int?
+  skeleton        Json? // joint names + hierarchy + bind pose
+  generationParams Json?
+
+  // Output artifacts (GLB with animation always; FBX where a Blender step exists).
+  glbKey        String?
+  fbxKey        String?
+  clipKey       String? // raw motion clip JSON (keyframes)
+  previewKey    String?
+  fileSizeBytes Int?
+
+  jobId String? @db.Uuid
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@index([userId, deletedAt])
+  @@index([characterAssetId])
+  @@map("animation_assets")
+}
+
+// ============================================================================
+// WORLD GENERATION (Phase 10) — HY-World behind an isolated worker
+// ============================================================================
+
+model World {
+  id           String  @id @default(uuid()) @db.Uuid
+  userId       String  @db.Uuid
+  user         User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  projectId    String? @db.Uuid
+  project      Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+
+  name         String
+  prompt       String?
+  status       String  @default("READY") // DRAFT | GENERATING | READY | FAILED
+  providerId   String?
+  modelFamily  String?
+  modelVersion String?
+  seed         Int?
+
+  environment  Json? // {skybox, hdr, fog, ambient}
+  metadata     Json?
+  // Composited world scene (glTF scene with terrain + objects).
+  glbKey        String?
+  previewKey    String?
+  fileSizeBytes Int?
+
+  jobId String? @db.Uuid
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  objects WorldObject[]
+
+  @@index([userId, deletedAt])
+  @@map("worlds")
+}
+
+model WorldObject {
+  id      String @id @default(uuid()) @db.Uuid
+  worldId String @db.Uuid
+  world   World  @relation(fields: [worldId], references: [id], onDelete: Cascade)
+  type    String // TERRAIN | MESH | LIGHT | CAMERA | ENVIRONMENT
+  name    String
+  transform Json? // {position:[x,y,z], rotation:[x,y,z], scale:[x,y,z]}
+  data      Json? // type-specific params (color, intensity, fov, ...)
+  assetKey  String?
+
+  createdAt DateTime @default(now())
+
+  @@index([worldId])
+  @@map("world_objects")
 }

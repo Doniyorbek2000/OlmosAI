@@ -40,11 +40,21 @@ clone pinned upstream commits at build time inside their own containers.
 
 ### HY-Motion — `services/ai-workers/hymotion`
 - Upstream: https://github.com/Tencent-Hunyuan/HY-Motion-1.0
-- Status: LICENSE_REVIEW_REQUIRED — disabled
+- License (code + weights): **Tencent HY-MOTION 1.0 Community License Agreement**
+- Commercial: permitted below 1M MAU; **excludes EU / UK / South Korea**; acceptable-use limits apply.
+- Required attribution (include when enabled/distributed):
+  > Tencent HY-MOTION 1.0 is licensed under the Tencent HY-MOTION 1.0 Community
+  > License Agreement, Copyright © 2025 Tencent. All Rights Reserved.
+- Status: **DISABLED in production** (geo + MAU gated). Adapter + worker complete; CPU procedural fallback for dev.
 
 ### HY-World — `services/ai-workers/hyworld`
-- Upstream: Tencent HY-World (latest official)
-- Status: LICENSE_REVIEW_REQUIRED — feature-flagged off
+- Upstream: https://github.com/Tencent-Hunyuan/HY-World-2.0 (latest official)
+- License (code + weights): **Tencent HY-WORLD 2.0 Community License Agreement**
+- Commercial: permitted below 1M MAU (else request license from Tencent); **excludes EU / UK / South Korea**; modified files need change notices.
+- Required attribution (include when enabled/distributed):
+  > Tencent HY-WORLD 2.0 is licensed under the Tencent HY-WORLD 2.0 Community
+  > License Agreement, Copyright © 2026 Tencent. All Rights Reserved.
+- Status: **DISABLED in production** (geo + MAU gated). Adapter + worker complete; CPU procedural fallback for dev.
 
 ## Notable software dependencies
 

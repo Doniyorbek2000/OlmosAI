@@ -34,6 +34,22 @@ describe('loadEnv', () => {
     ).toThrow(/Mock provider must never be enabled in production/);
   });
 
+  it('blocks restricted motion/world features in production without acknowledgement', () => {
+    expect(() =>
+      loadEnv({ ...base, NODE_ENV: 'production', FEATURE_WORLD_GENERATION: 'true' } as NodeJS.ProcessEnv),
+    ).toThrow(/restricted/);
+  });
+
+  it('allows restricted features in production when explicitly acknowledged', () => {
+    const env = loadEnv({
+      ...base,
+      NODE_ENV: 'production',
+      FEATURE_MOTION: 'true',
+      ALLOW_RESTRICTED_PROVIDERS: 'true',
+    } as NodeJS.ProcessEnv);
+    expect(env.FEATURE_MOTION).toBe(true);
+  });
+
   it('blocks default JWT secrets in production', () => {
     expect(() =>
       loadEnv({

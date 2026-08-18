@@ -94,6 +94,10 @@ services:
       S3_ENDPOINT: http://minio:9000
       TRIPOSR_WORKER_URL: http://triposr:8001
       ASSET_WORKER_URL: http://asset-worker:8010
+      # Restricted (geo/MAU-gated) workers — reachable only when the operator
+      # enables FEATURE_MOTION / FEATURE_WORLD_GENERATION.
+      HYMOTION_WORKER_URL: http://hymotion:8006
+      HYWORLD_WORKER_URL: http://hyworld:8007
     depends_on:
       postgres: { condition: service_healthy }
       redis: { condition: service_healthy }
@@ -134,6 +138,36 @@ services:
     depends_on:
       minio: { condition: service_healthy }
     ports: ['8010:8010']
+
+  # ---- Restricted AI workers (profile: restricted-workers) ------------------
+  # HY-Motion / HY-World. DISABLED by default (Tencent Community licenses exclude
+  # EU/UK/South Korea and cap at 1M MAU). Only run in a permitted territory with
+  # legal sign-off. CPU procedural fallback here; GPU builds via Dockerfile.gpu.
+  hymotion:
+    profiles: ['restricted-workers']
+    build:
+      context: ../..
+      dockerfile: services/ai-workers/hymotion/Dockerfile
+    env_file: ['../../.env']
+    environment:
+      S3_ENDPOINT: http://minio:9000
+      WORKER_GPU_AVAILABLE: 'false'
+    depends_on:
+      minio: { condition: service_healthy }
+    ports: ['8006:8006']
+
+  hyworld:
+    profiles: ['restricted-workers']
+    build:
+      context: ../..
+      dockerfile: services/ai-workers/hyworld/Dockerfile
+    env_file: ['../../.env']
+    environment:
+      S3_ENDPOINT: http://minio:9000
+      WORKER_GPU_AVAILABLE: 'false'
+    depends_on:
+      minio: { condition: service_healthy }
+    ports: ['8007:8007']
 
   # ---- Observability (profile: observability) -------------------------------
   prometheus:

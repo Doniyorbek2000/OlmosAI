@@ -62,6 +62,14 @@ jobs:
           pip install -r services/asset-worker/requirements.txt
           pip install pytest
           cd services/asset-worker && pytest -q
+      - name: HY-Motion worker test (procedural)
+        run: |
+          pip install -r services/ai-workers/hymotion/requirements.txt
+          cd services/ai-workers/hymotion && pytest -q
+      - name: HY-World worker test (procedural)
+        run: |
+          pip install -r services/ai-workers/hyworld/requirements.txt
+          cd services/ai-workers/hyworld && pytest -q
 
   docker:
     name: Docker build (smoke)

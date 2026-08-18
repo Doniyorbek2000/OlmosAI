@@ -21,12 +21,28 @@ import { TextTo3DWorkflow, type TextTo3DInput } from '../workflows/text-to-3d.wo
 import { ProviderRegistryService } from './provider-registry.service';
 import { resolveMode } from './mode-resolver';
 
+/** Map a generation mode to the resulting asset type (character/game/product). */
+function assetTypeForMode(mode: GenerationMode): Provenance['assetType'] {
+  switch (mode) {
+    case GenerationMode.CHARACTER:
+      return 'CHARACTER';
+    case GenerationMode.GAME_READY:
+    case GenerationMode.MOBILE_GAME:
+      return 'GAME_ASSET';
+    case GenerationMode.PRODUCT_VISUALIZATION:
+      return 'PRODUCT';
+    default:
+      return 'MODEL';
+  }
+}
+
 interface Provenance {
   sourceKind: string;
   quality: string;
   requirePbr: boolean;
   prompt?: string;
   conceptImageKey?: string;
+  assetType: 'MODEL' | 'CHARACTER' | 'GAME_ASSET' | 'PRODUCT';
   generationParams: Record<string, unknown>;
 }
 
@@ -196,6 +212,7 @@ export class GenerationProcessor {
         sourceKind: input.kind,
         quality: resolved.preference.quality,
         requirePbr: input.requirePbr,
+        assetType: assetTypeForMode(mode),
         generationParams: { mode, requirePbr: input.requirePbr, targetPolygons: input.targetPolygons },
       },
     };
@@ -217,6 +234,7 @@ export class GenerationProcessor {
         requirePbr: outcome.provenance.effectiveInput.requirePbr,
         prompt: outcome.provenance.prompt,
         conceptImageKey: outcome.provenance.conceptImageKey,
+        assetType: assetTypeForMode(outcome.provenance.parsed.mode),
         generationParams: {
           prompt: outcome.provenance.prompt,
           parsed: outcome.provenance.parsed,
@@ -241,7 +259,7 @@ export class GenerationProcessor {
           name: provenance.prompt
             ? provenance.prompt.slice(0, 60)
             : `Generation ${new Date().toISOString().slice(0, 19)}`,
-          type: 'MODEL',
+          type: provenance.assetType,
           sourceKind: provenance.sourceKind,
           prompt: provenance.prompt,
           providerId: result.providerId,

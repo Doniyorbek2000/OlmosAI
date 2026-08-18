@@ -9,9 +9,13 @@ import { GenerationProcessor } from './orchestrator/generation-processor.service
 import { ProviderRegistryService } from './orchestrator/provider-registry.service';
 import { AssetProcessingProcessor } from './assets/asset-processing.processor';
 import { WebhookDeliveryProcessor } from './webhooks/webhook-delivery.processor';
+import { MotionProcessor } from './motion/motion.processor';
+import { WorldProcessor } from './world/world.processor';
 import type { GenerationJobData } from './generations/generation-queue';
 import type { AssetProcessingJobData } from './assets/asset-processing.queue';
 import type { WebhookDeliveryJobData } from './webhooks/webhook.queue';
+import type { MotionJobData } from './motion/motion.queue';
+import type { WorldJobData } from './world/world.queue';
 import { REDIS } from './redis/redis.module';
 
 /**
@@ -26,6 +30,8 @@ async function bootstrap(): Promise<void> {
   const processor = app.get(GenerationProcessor);
   const assetProcessor = app.get(AssetProcessingProcessor);
   const webhookProcessor = app.get(WebhookDeliveryProcessor);
+  const motionProcessor = app.get(MotionProcessor);
+  const worldProcessor = app.get(WorldProcessor);
   const orchestrator = app.get(ProviderRegistryService);
   const redis = app.get<Redis>(REDIS);
 
@@ -68,6 +74,34 @@ async function bootstrap(): Promise<void> {
     logger.error(`Webhook delivery ${job?.data?.deliveryId} failed: ${err.message}`);
   });
 
+  // Restricted providers (HY-Motion / HY-World) — isolated queues + workers.
+  const motionWorker = startWorker<MotionJobData>(
+    QUEUE_NAMES.MOTION,
+    redis,
+    async (job) => {
+      logger.log(`Processing motion job ${job.data.jobId}`);
+      await motionProcessor.process(job.data.jobId);
+    },
+    concurrency,
+  );
+  motionWorker.on('failed', (job, err) => {
+    logger.error(`Motion job ${job?.data?.jobId} failed: ${err.message}`);
+  });
+
+  const worldWorker = startWorker<WorldJobData>(
+    QUEUE_NAMES.WORLD,
+    redis,
+    async (job) => {
+      logger.log(`Processing world job ${job.data.jobId}`);
+      await worldProcessor.process(job.data.jobId);
+    },
+    // World generation is heavy; keep it to one at a time per worker process.
+    1,
+  );
+  worldWorker.on('failed', (job, err) => {
+    logger.error(`World job ${job?.data?.jobId} failed: ${err.message}`);
+  });
+
   // Periodic provider health refresh feeds routing + circuit breaking.
   const healthTimer = setInterval(() => {
     void orchestrator.refreshAllHealth();
@@ -77,7 +111,13 @@ async function bootstrap(): Promise<void> {
 
   const shutdown = async () => {
     clearInterval(healthTimer);
-    await Promise.all([worker.close(), assetWorker.close(), webhookWorker.close()]);
+    await Promise.all([
+      worker.close(),
+      assetWorker.close(),
+      webhookWorker.close(),
+      motionWorker.close(),
+      worldWorker.close(),
+    ]);
     await app.close();
     process.exit(0);
   };

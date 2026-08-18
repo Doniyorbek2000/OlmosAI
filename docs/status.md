@@ -91,8 +91,31 @@ Legend: ✅ implemented + tested · 🟩 implemented · 🟨 scaffolded/partial 
   shown only to ADMIN; seed can elevate ADMIN_EMAIL — admin service + metrics
   unit tested
 
-## Phases 9–10 — Character/motion & world
-- 🟨 HY-Motion / HY-World worker scaffolds + docs, feature-flagged off (license review)
+## Phase 9 — Character / Motion ✅ (provider disabled in prod — license)
+- ✅ Full license review of HY-Motion 1.0 (Tencent Community; excludes EU/UK/KR,
+  <1M MAU) — documented; provider **disabled in production**, config-gated.
+- ✅ AnimationAsset model + CHARACTER asset type + rig metadata; CHARACTER-mode
+  generations produce CHARACTER assets.
+- ✅ HY-Motion worker (isolated FastAPI): deterministic procedural motion → a real
+  **animated GLB** (glTF node-TRS animation, 7-joint rig, 8 channels) + portable
+  motion-clip JSON + skeleton; GPU real-model path documented. 6 pytest tests.
+- ✅ Text→motion pipeline: `/v1/motion/text-to-motion` (credits, isolated `motion`
+  queue + processor → AnimationAsset), list/get/download, attach/detach to a
+  character, delete; SSE progress; webhook + metrics. Web /create/motion page with
+  **animation playback** in the viewer. Node service tests.
+
+## Phase 10 — World Generation ✅ (provider disabled in prod — license)
+- ✅ Full license review of HY-World 2.0 (Tencent Community; excludes EU/UK/KR,
+  <1M MAU) — documented; provider **disabled in production**, config-gated.
+- ✅ World + WorldObject models (terrain/mesh/light/camera/environment).
+- ✅ **Isolated** HY-World worker (separate service, own `world` queue, single
+  concurrency): procedural terrain + scattered scene objects composited into a
+  real world GLB + scene manifest; GPU real-model path documented. 5 pytest tests.
+- ✅ World pipeline: `/v1/worlds` (credits, `world` queue + processor →
+  World+WorldObjects), list/get/download/delete; SSE progress; webhook + metrics.
+  Web /worlds (list + generate) and /worlds/[id] viewer with scene tree + export.
+- ✅ Restricted providers seeded (disabled), admin controls apply, compose
+  `restricted-workers` profile, CI runs both worker suites.
 
 ## Milestone 1 (the 20-step flow)
 Register → login → project → upload → store → start image-to-3D → job + credit
@@ -111,11 +134,12 @@ implemented and tested; the geometry-optimization (retopo/decimate/LOD) asset
 pass is the remaining piece (Phase 4).
 
 ## Verification
-- 86 Node unit tests (types, config, ai-sdk router/breaker/executor, storage,
+- 96 Node unit tests (types, config, ai-sdk router/breaker/executor, storage,
   auth, and api: credit-ledger, mode-resolver, workflow-engine, prompt-parser,
   png/concept-image, game-ready, billing event-application + stripe-normalizer,
-  api-key service, webhook signing/backoff + emit, admin aggregation, metrics)
-  + 19 Python worker tests (7 generation, 12 asset-worker) — all green
+  api-key service, webhook signing/backoff + emit, admin aggregation, metrics,
+  motion + world services) + 30 Python worker tests (7 generation, 12
+  asset-worker, 6 hymotion, 5 hyworld) — all green
 - `pnpm build`/`typecheck`/`test` pass; `next build` passes; Prisma schema
   validates; docker-compose config validates
 - `pnpm build`, `pnpm typecheck`, `pnpm test` pass; `next build` passes;

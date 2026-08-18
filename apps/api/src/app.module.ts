@@ -17,6 +17,8 @@ import { WebhooksModule } from './webhooks/webhooks.module';
 import { ProjectsModule } from './projects/projects.module';
 import { UploadsModule } from './uploads/uploads.module';
 import { GenerationsModule } from './generations/generations.module';
+import { MotionModule } from './motion/motion.module';
+import { WorldModule } from './world/world.module';
 import { HealthModule } from './health/health.module';
 import { MetricsModule } from './metrics/metrics.module';
 import { AdminModule } from './admin/admin.module';
@@ -44,6 +46,8 @@ import { RequestIdMiddleware } from './common/request-id.middleware';
     ProjectsModule,
     UploadsModule,
     GenerationsModule,
+    MotionModule,
+    WorldModule,
     HealthModule,
     MetricsModule,
     AdminModule,

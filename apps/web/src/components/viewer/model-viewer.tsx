@@ -1,8 +1,8 @@
 'use client';
 
-import { Suspense, useEffect } from 'react';
+import { Suspense, useEffect, useRef } from 'react';
 import { Canvas } from '@react-three/fiber';
-import { OrbitControls, Environment, Grid, Bounds, useGLTF } from '@react-three/drei';
+import { OrbitControls, Environment, Grid, Bounds, useGLTF, useAnimations } from '@react-three/drei';
 import * as THREE from 'three';
 
 export interface ViewerStats {
@@ -19,7 +19,21 @@ interface SceneModelProps {
 }
 
 function SceneModel({ url, wireframe, onStats }: SceneModelProps) {
-  const { scene } = useGLTF(url);
+  const { scene, animations } = useGLTF(url);
+  const group = useRef<THREE.Group>(null);
+  const { actions, names } = useAnimations(animations, group);
+
+  // Auto-play the first animation clip if the model is animated.
+  useEffect(() => {
+    if (names.length > 0) {
+      const action = actions[names[0]];
+      action?.reset().fadeIn(0.2).play();
+      return () => {
+        action?.fadeOut(0.2);
+      };
+    }
+    return undefined;
+  }, [actions, names]);
 
   useEffect(() => {
     let vertices = 0;
@@ -53,7 +67,11 @@ function SceneModel({ url, wireframe, onStats }: SceneModelProps) {
     });
   }, [scene, wireframe]);
 
-  return <primitive object={scene} />;
+  return (
+    <group ref={group}>
+      <primitive object={scene} />
+    </group>
+  );
 }
 
 interface ModelViewerProps {

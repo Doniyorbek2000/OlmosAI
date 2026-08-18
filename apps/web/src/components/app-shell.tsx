@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { Boxes, LayoutDashboard, Coins, FolderOpen, Wand2, LogOut, Image as ImageIcon, Type, CreditCard, KeyRound, Shield } from 'lucide-react';
+import { Boxes, LayoutDashboard, Coins, FolderOpen, Wand2, LogOut, Image as ImageIcon, Type, CreditCard, KeyRound, Shield, PersonStanding, Globe } from 'lucide-react';
 import { api } from '@/lib/api';
 import { brand } from '@/lib/brand';
 import { cn } from '@/lib/utils';
@@ -31,6 +31,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const [me, setMe] = useState<Me | null>(null);
+  const [features, setFeatures] = useState<Record<string, boolean>>({});
   const [checked, setChecked] = useState(false);
 
   useEffect(() => {
@@ -39,6 +40,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       .then(setMe)
       .catch(() => router.replace('/login'))
       .finally(() => setChecked(true));
+    // Public config is served at /api/config/public (version-neutral).
+    fetch('/api/config/public', { credentials: 'include' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((c) => c && setFeatures(c.features ?? {}))
+      .catch(() => undefined);
   }, [router]);
 
   async function logout() {
@@ -78,6 +84,29 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               </Link>
             );
           })}
+          {[
+            features.MOTION ? { href: '/create/motion', label: 'Motion', icon: PersonStanding } : null,
+            features.WORLD_GENERATION ? { href: '/worlds', label: 'Worlds', icon: Globe } : null,
+          ]
+            .filter((x): x is { href: string; label: string; icon: typeof Globe } => x !== null)
+            .map((item) => {
+              const active = pathname === item.href || pathname.startsWith(item.href + '/');
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={cn(
+                    'flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors',
+                    active
+                      ? 'bg-surface-hover text-content'
+                      : 'text-content-muted hover:bg-surface-hover hover:text-content',
+                  )}
+                >
+                  <item.icon className="h-4 w-4" />
+                  {item.label}
+                </Link>
+              );
+            })}
           {me?.role === 'ADMIN' && (
             <Link
               href="/admin"

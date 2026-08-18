@@ -63,12 +63,21 @@ export const envSchema = z
     TRIPOSG_WORKER_URL: z.string().url().optional(),
     SF3D_WORKER_URL: z.string().url().optional(),
     HUNYUAN3D_WORKER_URL: z.string().url().optional(),
+    HYMOTION_WORKER_URL: z.string().url().optional(),
+    HYWORLD_WORKER_URL: z.string().url().optional(),
     ASSET_WORKER_URL: z.string().url().optional(),
 
     // Provider enablement bootstrap
     PROVIDER_MOCK_ENABLED: boolFromEnv.default('false'),
     PROVIDER_TRIPOSR_ENABLED: boolFromEnv.default('false'),
     PROVIDER_TRELLIS2_ENABLED: boolFromEnv.default('false'),
+
+    // Restricted (geo/MAU-gated) capabilities — HY-Motion / HY-World.
+    FEATURE_MOTION: boolFromEnv.default('false'),
+    FEATURE_WORLD_GENERATION: boolFromEnv.default('false'),
+    // Operator acknowledgement required to run restricted providers in prod:
+    // affirms territory geofencing (EU/UK/KR excluded), <1M MAU, and legal sign-off.
+    ALLOW_RESTRICTED_PROVIDERS: boolFromEnv.default('false'),
 
     // Payments
     STRIPE_SECRET_KEY: z.string().optional(),
@@ -95,6 +104,21 @@ export const envSchema = z
         code: z.ZodIssueCode.custom,
         path: ['JWT_ACCESS_SECRET'],
         message: 'Default JWT secrets are not allowed in production',
+      });
+    }
+    // HY-Motion / HY-World carry a hard EU/UK/South-Korea geographic exclusion and
+    // a 1M-MAU ceiling; they stay disabled in production unless the operator
+    // explicitly acknowledges geofencing + MAU + legal sign-off.
+    if (
+      env.NODE_ENV === 'production' &&
+      (env.FEATURE_MOTION || env.FEATURE_WORLD_GENERATION) &&
+      !env.ALLOW_RESTRICTED_PROVIDERS
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['FEATURE_MOTION'],
+        message:
+          'Motion/World use restricted (geo/MAU-gated) models; set ALLOW_RESTRICTED_PROVIDERS=true to run them in production after legal + territory review',
       });
     }
   });

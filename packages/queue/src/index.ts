@@ -28,6 +28,8 @@ export const QUEUE_NAMES = {
   GENERATION: 'generation',
   ASSET_PROCESSING: 'asset-processing',
   WEBHOOK: 'webhook-delivery',
+  MOTION: 'motion',
+  WORLD: 'world',
 } as const;
 
 export function createRedis(url: string): Redis {
