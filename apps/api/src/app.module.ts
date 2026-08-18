@@ -5,6 +5,7 @@ import { RedisModule } from './redis/redis.module';
 import { StorageModule } from './storage/storage.module';
 import { BillingModule } from './billing/billing.module';
 import { OrchestratorModule } from './orchestrator/orchestrator.module';
+import { WorkflowsModule } from './workflows/workflows.module';
 import { ProcessingModule } from './orchestrator/processing.module';
 import { AssetsModule } from './assets/assets.module';
 import { JobsModule } from './jobs/jobs.module';
@@ -25,6 +26,7 @@ import { RequestIdMiddleware } from './common/request-id.middleware';
     StorageModule,
     BillingModule,
     OrchestratorModule,
+    WorkflowsModule,
     ProcessingModule,
     AssetsModule,
     JobsModule,

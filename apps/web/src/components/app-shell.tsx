@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { Boxes, LayoutDashboard, Coins, FolderOpen, Wand2, LogOut, Image as ImageIcon } from 'lucide-react';
+import { Boxes, LayoutDashboard, Coins, FolderOpen, Wand2, LogOut, Image as ImageIcon, Type } from 'lucide-react';
 import { api } from '@/lib/api';
 import { brand } from '@/lib/brand';
 import { cn } from '@/lib/utils';
@@ -18,6 +18,7 @@ interface Me {
 
 const NAV = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { href: '/create/text-to-3d', label: 'Text to 3D', icon: Type },
   { href: '/create/image-to-3d', label: 'Image to 3D', icon: ImageIcon },
   { href: '/projects', label: 'Projects', icon: FolderOpen },
   { href: '/assets', label: 'Assets', icon: Boxes },
@@ -51,7 +52,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           {brand.name}
         </div>
         <nav className="flex-1 space-y-1 px-3">
-          <Link href="/create/image-to-3d">
+          <Link href="/create/text-to-3d">
             <Button className="mb-3 w-full gap-2">
               <Wand2 className="h-4 w-4" /> New generation
             </Button>

@@ -33,8 +33,14 @@ Legend: ✅ implemented + tested · 🟩 implemented · 🟨 scaffolded/partial 
 - 🟨 PBR material model in schema + editor properties panel (edit ops planned)
 
 ## Phase 5 — Text-to-3D & agent
-- 🟩 Resumable workflow types + stage persistence (schema + types); orchestration planned
-- ⬜ Concept-image abstraction, AI agent execution
+- ✅ Resumable workflow engine (DB-persisted stages, resume-from-last-success) — tested
+- ✅ Text-to-3D workflow: analyze → enhance → concept image → preprocess → shape →
+  texture → postprocess → quality → export; `/v1/generations/text-to-3d` + web page
+- ✅ Prompt parser (polygon budget, PBR, engine, style → mode) — parses the
+  milestone-3 example; tested
+- ✅ Concept-image service: in-process procedural PNG renderer (dependency-free
+  encoder) + real text-to-image worker interface — tested
+- ⬜ Full AI-agent execution surface (parser + workflow selection are in place)
 
 ## Phase 6 — Billing
 - ✅ Credit ledger: reserve/capture/release, transactional + idempotent — tested
@@ -59,8 +65,17 @@ download GLB → history persists. **Server + worker + web are all implemented a
 build/test green**; run it locally per `docs/local-development.md` (procedural
 TripoSR or mock provider — no GPU required).
 
+## Milestone 3 (natural language → Unity-ready model)
+"Create a realistic Viking axe, 15k polygons maximum, PBR texture, optimized for
+Unity" → the prompt parser extracts polygons/PBR/engine and picks GAME_READY →
+the Text-to-3D workflow generates a concept image → routes to an image-to-3D
+provider → validates polygon budget + quality → exports. Parser + workflow are
+implemented and tested; the geometry-optimization (retopo/decimate/LOD) asset
+pass is the remaining piece (Phase 4).
+
 ## Verification
-- 35 Node unit tests (types, config, ai-sdk router/breaker/executor, storage,
-  auth, api credit-ledger + mode-resolver) + 7 Python worker tests — all green
+- 50 Node unit tests (types, config, ai-sdk router/breaker/executor, storage,
+  auth, api credit-ledger + mode-resolver + workflow-engine + prompt-parser +
+  png/concept-image) + 7 Python worker tests — all green
 - `pnpm build`, `pnpm typecheck`, `pnpm test` pass; `next build` passes;
   Prisma schema validates; docker-compose config validates

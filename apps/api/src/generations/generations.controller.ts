@@ -2,7 +2,7 @@ import { Body, Controller, Get, Param, Post, Query, UseGuards } from '@nestjs/co
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { CurrentUser, type AuthUser } from '../auth/current-user.decorator';
 import { GenerationsService } from './generations.service';
-import { ImageTo3DDto } from './dto';
+import { ImageTo3DDto, TextTo3DDto } from './dto';
 
 @Controller({ path: 'generations', version: '1' })
 @UseGuards(JwtAuthGuard)
@@ -12,6 +12,11 @@ export class GenerationsController {
   @Post('image-to-3d')
   create(@CurrentUser() user: AuthUser, @Body() dto: ImageTo3DDto) {
     return this.generations.createImageTo3D(user.id, dto);
+  }
+
+  @Post('text-to-3d')
+  createText(@CurrentUser() user: AuthUser, @Body() dto: TextTo3DDto) {
+    return this.generations.createTextTo3D(user.id, dto);
   }
 
   @Get()

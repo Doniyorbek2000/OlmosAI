@@ -5,9 +5,10 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CreditsService } from '../billing/credits.service';
 import { ProviderRegistryService } from '../orchestrator/provider-registry.service';
 import { resolveMode } from '../orchestrator/mode-resolver';
+import { parsePrompt } from '../workflows/prompt-parser';
 import { AppConfigService } from '../config/config.service';
 import { GENERATION_QUEUE, type GenerationJobData } from './generation-queue';
-import type { ImageTo3DDto } from './dto';
+import type { ImageTo3DDto, TextTo3DDto } from './dto';
 
 @Injectable()
 export class GenerationsService {
@@ -93,6 +94,87 @@ export class GenerationsService {
     // Enqueue (BullMQ jobId = our job id → dedupe/idempotent dispatch).
     await this.queue.add('image-to-3d', { jobId: job.id, userId }, { jobId: job.id, attempts: 2, backoffMs: 2000 });
 
+    return job;
+  }
+
+  async createTextTo3D(userId: string, dto: TextTo3DDto) {
+    if (!this.config.featureFlags.TEXT_TO_3D) {
+      throw new VeyraError(ErrorCode.FORBIDDEN, 'Text-to-3D is not enabled');
+    }
+    if (dto.idempotencyKey) {
+      const existing = await this.prisma.generationJob.findUnique({
+        where: { idempotencyKey: dto.idempotencyKey },
+      });
+      if (existing) return existing;
+    }
+
+    const parsed = parsePrompt(dto.prompt);
+    const mode = (dto.mode as GenerationMode) ?? parsed.mode;
+    const requirePbr = dto.requirePbr ?? parsed.requirePbr;
+    const targetPolygons = dto.targetPolygons ?? parsed.targetPolygons;
+    const resolved = resolveMode(mode, { requirePbr, targetPolygons });
+
+    // Estimate cost from the top routed provider (images not needed for the
+    // estimate; the concept image is generated during the workflow).
+    const estimateInput: GenerationInput = {
+      kind: 'image',
+      images: [],
+      quality: resolved.preference.quality,
+      requirePbr,
+      targetPolygons,
+      outputFormats: ['GLB'],
+    };
+    const decision = this.orchestrator.router.route({
+      required: resolved.required,
+      preference: resolved.preference,
+      input: estimateInput,
+    });
+    const estimate = await decision.chain[0].estimateCost(estimateInput);
+    // Text-to-3D adds a concept-image step: a small credit surcharge.
+    const credits = estimate.credits + 1;
+
+    if (dto.projectId) {
+      const project = await this.prisma.project.findFirst({
+        where: { id: dto.projectId, userId, deletedAt: null },
+      });
+      if (!project) throw new VeyraError(ErrorCode.NOT_FOUND, 'Project not found');
+    }
+
+    const jobInput = {
+      prompt: dto.prompt,
+      negativePrompt: dto.negativePrompt ?? parsed.negativePrompt,
+      mode,
+      requirePbr,
+      targetPolygons,
+      projectId: dto.projectId,
+      seed: dto.seed,
+    };
+
+    const job = await this.prisma.generationJob.create({
+      data: {
+        userId,
+        projectId: dto.projectId,
+        kind: 'TEXT_TO_3D',
+        status: 'QUEUED',
+        mode,
+        idempotencyKey: dto.idempotencyKey,
+        input: jobInput as unknown as object,
+        reservedCredits: credits,
+        routingTrace: decision.trace as unknown as object,
+      },
+    });
+
+    try {
+      await this.credits.reserve(userId, job.id, credits);
+    } catch (err) {
+      await this.prisma.generationJob.update({
+        where: { id: job.id },
+        data: { status: 'FAILED', errorCode: ErrorCode.INSUFFICIENT_CREDITS, errorMessage: 'Insufficient credits' },
+      });
+      throw err;
+    }
+
+    await this.queue.add('text-to-3d', { jobId: job.id, userId }, { jobId: job.id, attempts: 2, backoffMs: 2000 });
     return job;
   }
 

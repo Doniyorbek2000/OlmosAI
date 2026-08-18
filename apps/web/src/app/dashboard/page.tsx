@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { ImageIcon, Boxes, Clock, CheckCircle2, XCircle, Loader2 } from 'lucide-react';
+import { ImageIcon, Boxes, Clock, CheckCircle2, XCircle, Loader2, Type } from 'lucide-react';
 import { AppShell } from '@/components/app-shell';
 import { api } from '@/lib/api';
 import { Card, CardMuted, CardTitle } from '@/components/ui/card';
@@ -58,7 +58,14 @@ export default function DashboardPage() {
           </Card>
         </div>
 
-        <div className="mt-8 grid gap-3 sm:grid-cols-2">
+        <div className="mt-8 grid gap-3 sm:grid-cols-3">
+          <Link href="/create/text-to-3d">
+            <Card className="transition-colors hover:bg-surface-raised">
+              <Type className="h-5 w-5 text-accent" />
+              <CardTitle className="mt-3">Text to 3D</CardTitle>
+              <CardMuted className="mt-1">Describe an object and generate a model.</CardMuted>
+            </Card>
+          </Link>
           <Link href="/create/image-to-3d">
             <Card className="transition-colors hover:bg-surface-raised">
               <ImageIcon className="h-5 w-5 text-accent" />
