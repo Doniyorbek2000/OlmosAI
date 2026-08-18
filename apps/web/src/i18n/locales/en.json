@@ -1,0 +1,5 @@
+{
+  "nav": { "dashboard": "Dashboard", "textTo3d": "Text to 3D", "imageTo3d": "Image to 3D", "projects": "Projects", "assets": "Assets", "billing": "Billing", "developer": "Developer", "motion": "Motion", "worlds": "Worlds", "admin": "Admin", "gallery": "Gallery" },
+  "common": { "generate": "Generate", "download": "Download", "signIn": "Sign in", "signUp": "Sign up", "signOut": "Sign out", "credits": "Credits", "loading": "Loading…" },
+  "landing": { "tagline": "Create production 3D with AI" }
+}

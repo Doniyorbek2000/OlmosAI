@@ -1,7 +1,9 @@
 import { Body, Controller, Get, Param, Patch, Query, UseGuards } from '@nestjs/common';
 import { IsBoolean, IsIn, IsInt, IsNumber, IsOptional, Max, Min } from 'class-validator';
+import type { FeatureFlagState } from '@veyra/config';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { Roles, RolesGuard } from '../auth/roles.guard';
+import { FeatureFlagsService } from '../feature-flags/feature-flags.service';
 import { AdminService } from './admin.service';
 
 class UpdateProviderDto {
@@ -24,7 +26,20 @@ class UpdateWorkerDto {
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles('ADMIN')
 export class AdminController {
-  constructor(private readonly admin: AdminService) {}
+  constructor(
+    private readonly admin: AdminService,
+    private readonly flags: FeatureFlagsService,
+  ) {}
+
+  @Get('feature-flags')
+  featureFlags() {
+    return this.flags.all();
+  }
+
+  @Patch('feature-flags/:flag')
+  setFlag(@Param('flag') flag: string, @Body() dto: { enabled: boolean }) {
+    return this.flags.setFlag(flag as keyof FeatureFlagState, Boolean(dto.enabled));
+  }
 
   @Get('overview')
   overview() {

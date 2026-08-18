@@ -1,0 +1,5 @@
+{
+  "nav": { "dashboard": "Панель", "textTo3d": "Текст в 3D", "imageTo3d": "Изображение в 3D", "projects": "Проекты", "assets": "Ассеты", "billing": "Оплата", "developer": "Разработчик", "motion": "Анимация", "worlds": "Миры", "admin": "Админ", "gallery": "Галерея" },
+  "common": { "generate": "Создать", "download": "Скачать", "signIn": "Войти", "signUp": "Регистрация", "signOut": "Выйти", "credits": "Кредиты", "loading": "Загрузка…" },
+  "landing": { "tagline": "Создавайте профессиональный 3D с ИИ" }
+}

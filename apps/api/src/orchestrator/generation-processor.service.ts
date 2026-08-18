@@ -17,6 +17,7 @@ import { AssetQualityService } from '../assets/asset-quality.service';
 import { JobEventsService } from '../jobs/job-events.service';
 import { WebhooksService } from '../webhooks/webhooks.service';
 import { MetricsService } from '../metrics/metrics.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { TextTo3DWorkflow, type TextTo3DInput } from '../workflows/text-to-3d.workflow';
 import { ProviderRegistryService } from './provider-registry.service';
 import { resolveMode } from './mode-resolver';
@@ -71,6 +72,7 @@ export class GenerationProcessor {
     private readonly textWorkflow: TextTo3DWorkflow,
     private readonly webhooks: WebhooksService,
     private readonly metrics: MetricsService,
+    private readonly notifications: NotificationsService,
   ) {}
 
   async process(jobId: string): Promise<void> {
@@ -154,6 +156,7 @@ export class GenerationProcessor {
       await this.emit(job.id, JobStatus.COMPLETED, 100, 'COMPLETED', 'Generation complete');
       await this.webhooks.emit(job.userId, 'generation.completed', { jobId: job.id, assetId: asset.id });
       await this.webhooks.emit(job.userId, 'asset.created', { assetId: asset.id, jobId: job.id });
+      await this.notifications.notify(job.userId, 'generation.completed', 'Generation complete', asset.name, { assetId: asset.id, jobId: job.id });
     } catch (err) {
       if (cancelled) {
         await this.finishCancelled(job.id, job.userId, job.reservedCredits);
@@ -175,6 +178,7 @@ export class GenerationProcessor {
       this.metrics.recordGeneration(job.kind, 'failed');
       await this.emit(job.id, JobStatus.FAILED, 0, 'FAILED', verr.message);
       await this.webhooks.emit(job.userId, 'generation.failed', { jobId: job.id, code: verr.code });
+      await this.notifications.notify(job.userId, 'generation.failed', 'Generation failed', verr.message, { jobId: job.id });
     }
   }
 

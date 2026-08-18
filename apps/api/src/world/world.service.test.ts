@@ -41,9 +41,9 @@ describe('WorldService.create', () => {
   });
 
   function svc(opts: { world: boolean; workerEnabled: boolean }) {
-    const config: any = { featureFlags: { WORLD_GENERATION: opts.world } };
+    const flags: any = { get: () => opts.world };
     const worker: any = { enabled: opts.workerEnabled };
-    return new WorldService(fake.prisma as never, credits, config, worker, storage, queue);
+    return new WorldService(fake.prisma as never, credits, flags, worker, storage, queue);
   }
 
   it('is forbidden when the world feature is off', async () => {

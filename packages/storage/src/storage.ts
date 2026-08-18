@@ -79,6 +79,13 @@ export class StorageService {
     );
   }
 
+  /** Download an object's full bytes (small files only — e.g. for packaging). */
+  async getObject(key: string): Promise<Buffer> {
+    const res = await this.s3.send(new GetObjectCommand({ Bucket: this.bucket, Key: key }));
+    const bytes = await res.Body?.transformToByteArray();
+    return Buffer.from(bytes ?? new Uint8Array());
+  }
+
   async headObject(key: string): Promise<{ size: number; contentType?: string } | null> {
     try {
       const res = await this.s3.send(new HeadObjectCommand({ Bucket: this.bucket, Key: key }));

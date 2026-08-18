@@ -4,7 +4,7 @@ import { StorageService } from '@veyra/storage';
 import { ErrorCode, VeyraError } from '@veyra/types';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreditsService } from '../billing/credits.service';
-import { AppConfigService } from '../config/config.service';
+import { FeatureFlagsService } from '../feature-flags/feature-flags.service';
 import { STORAGE } from '../storage/storage.module';
 import { MotionWorkerClient } from './motion-worker.client';
 import { MOTION_QUEUE, type MotionJobData } from './motion.queue';
@@ -27,14 +27,14 @@ export class MotionService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly credits: CreditsService,
-    private readonly config: AppConfigService,
+    private readonly flags: FeatureFlagsService,
     private readonly worker: MotionWorkerClient,
     @Inject(STORAGE) private readonly storage: StorageService,
     @Inject(MOTION_QUEUE) private readonly queue: BullJobQueue<MotionJobData>,
   ) {}
 
   async createTextToMotion(userId: string, dto: TextToMotionDto) {
-    if (!this.config.featureFlags.MOTION) {
+    if (!this.flags.get('MOTION')) {
       throw new VeyraError(ErrorCode.FORBIDDEN, 'Motion generation is not enabled');
     }
     if (!this.worker.enabled) {

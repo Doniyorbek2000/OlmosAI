@@ -6,7 +6,7 @@ import { CreditsService } from '../billing/credits.service';
 import { ProviderRegistryService } from '../orchestrator/provider-registry.service';
 import { resolveMode } from '../orchestrator/mode-resolver';
 import { parsePrompt } from '../workflows/prompt-parser';
-import { AppConfigService } from '../config/config.service';
+import { FeatureFlagsService } from '../feature-flags/feature-flags.service';
 import { GENERATION_QUEUE, type GenerationJobData } from './generation-queue';
 import type { ImageTo3DDto, TextTo3DDto } from './dto';
 
@@ -16,12 +16,12 @@ export class GenerationsService {
     private readonly prisma: PrismaService,
     private readonly credits: CreditsService,
     private readonly orchestrator: ProviderRegistryService,
-    private readonly config: AppConfigService,
+    private readonly flags: FeatureFlagsService,
     @Inject(GENERATION_QUEUE) private readonly queue: BullJobQueue<GenerationJobData>,
   ) {}
 
   async createImageTo3D(userId: string, dto: ImageTo3DDto) {
-    if (!this.config.featureFlags.IMAGE_TO_3D) {
+    if (!this.flags.get('IMAGE_TO_3D')) {
       throw new VeyraError(ErrorCode.FORBIDDEN, 'Image-to-3D is not enabled');
     }
 
@@ -98,7 +98,7 @@ export class GenerationsService {
   }
 
   async createTextTo3D(userId: string, dto: TextTo3DDto) {
-    if (!this.config.featureFlags.TEXT_TO_3D) {
+    if (!this.flags.get('TEXT_TO_3D')) {
       throw new VeyraError(ErrorCode.FORBIDDEN, 'Text-to-3D is not enabled');
     }
     if (dto.idempotencyKey) {

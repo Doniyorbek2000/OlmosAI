@@ -124,13 +124,33 @@ export default function EditorPage() {
               </p>
             </div>
           </div>
-          {url && (
-            <a href={url} download>
-              <Button className="gap-2">
-                <Download className="h-4 w-4" /> Export GLB
-              </Button>
-            </a>
-          )}
+          <div className="flex gap-2">
+            <Button
+              variant="secondary"
+              className="gap-2"
+              onClick={async () => {
+                const res = await api.get<{ url: string }>(`/assets/${params.assetId}/package`);
+                window.open(res.url, '_blank');
+              }}
+            >
+              <Download className="h-4 w-4" /> ZIP
+            </Button>
+            <Button
+              variant="secondary"
+              onClick={async () => {
+                await api.post(`/assets/${params.assetId}/publish`, { isPublic: true }).catch(() => undefined);
+              }}
+            >
+              Publish
+            </Button>
+            {url && (
+              <a href={url} download>
+                <Button className="gap-2">
+                  <Download className="h-4 w-4" /> Export GLB
+                </Button>
+              </a>
+            )}
+          </div>
         </div>
 
         <div className="flex min-h-0 flex-1">

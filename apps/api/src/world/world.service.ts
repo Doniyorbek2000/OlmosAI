@@ -4,7 +4,7 @@ import { StorageService } from '@veyra/storage';
 import { ErrorCode, VeyraError } from '@veyra/types';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreditsService } from '../billing/credits.service';
-import { AppConfigService } from '../config/config.service';
+import { FeatureFlagsService } from '../feature-flags/feature-flags.service';
 import { STORAGE } from '../storage/storage.module';
 import { WorldWorkerClient } from './world-worker.client';
 import { WORLD_QUEUE, type WorldJobData } from './world.queue';
@@ -24,14 +24,14 @@ export class WorldService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly credits: CreditsService,
-    private readonly config: AppConfigService,
+    private readonly flags: FeatureFlagsService,
     private readonly worker: WorldWorkerClient,
     @Inject(STORAGE) private readonly storage: StorageService,
     @Inject(WORLD_QUEUE) private readonly queue: BullJobQueue<WorldJobData>,
   ) {}
 
   async create(userId: string, dto: CreateWorldDto) {
-    if (!this.config.featureFlags.WORLD_GENERATION) {
+    if (!this.flags.get('WORLD_GENERATION')) {
       throw new VeyraError(ErrorCode.FORBIDDEN, 'World generation is not enabled');
     }
     if (!this.worker.enabled) {

@@ -45,9 +45,9 @@ describe('MotionService.createTextToMotion', () => {
   });
 
   function svc(opts: { motion: boolean; workerEnabled: boolean }) {
-    const config: any = { featureFlags: { MOTION: opts.motion } };
+    const flags: any = { get: () => opts.motion };
     const worker: any = { enabled: opts.workerEnabled, generate: async () => ({}) };
-    return new MotionService(fake.prisma as never, creditsOk, config, worker, storage, queue);
+    return new MotionService(fake.prisma as never, creditsOk, flags, worker, storage, queue);
   }
 
   it('is forbidden when the motion feature is off', async () => {
@@ -74,9 +74,9 @@ describe('MotionService.attach/detach', () => {
   it('attaches an animation to a character and detaches it', async () => {
     const fake = makeFake();
     fake.state.anims.set('a1', { id: 'a1', characterAssetId: null });
-    const config: any = { featureFlags: { MOTION: true } };
+    const flags: any = { get: () => true };
     const worker: any = { enabled: true };
-    const s = new MotionService(fake.prisma as never, creditsOk, config, worker, storage, { add: async () => 'j' } as never);
+    const s = new MotionService(fake.prisma as never, creditsOk, flags, worker, storage, { add: async () => 'j' } as never);
     const attached = await s.attach('u1', 'a1', 'char1');
     expect(attached.characterAssetId).toBe('char1');
     const detached = await s.detach('u1', 'a1');

@@ -83,6 +83,13 @@ export function AuthForm({ mode }: { mode: 'login' | 'register' }) {
           {loading && <Loader2 className="h-4 w-4 animate-spin" />}
           {mode === 'login' ? 'Sign in' : 'Create account'}
         </Button>
+        {mode === 'login' && (
+          <p className="text-center text-xs">
+            <Link href="/forgot-password" className="text-content-muted hover:text-content">
+              Forgot password?
+            </Link>
+          </p>
+        )}
       </form>
 
       <p className="mt-6 text-center text-sm text-content-muted">

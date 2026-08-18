@@ -1,12 +1,14 @@
 import { Controller, Get } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { AppConfigService } from '../config/config.service';
+import { FeatureFlagsService } from '../feature-flags/feature-flags.service';
 
 @Controller()
 export class HealthController {
   constructor(
     private readonly prisma: PrismaService,
     private readonly config: AppConfigService,
+    private readonly flags: FeatureFlagsService,
   ) {}
 
   @Get('health')
@@ -30,7 +32,7 @@ export class HealthController {
   publicConfig() {
     return {
       brand: this.config.branding.name,
-      features: this.config.featureFlags,
+      features: this.flags.all(),
     };
   }
 }

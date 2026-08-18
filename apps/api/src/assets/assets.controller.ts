@@ -6,6 +6,7 @@ import { ApiScopes } from '../api-keys/api-scopes.decorator';
 import { CurrentUser, type AuthUser } from '../auth/current-user.decorator';
 import { PrismaService } from '../prisma/prisma.service';
 import { STORAGE } from '../storage/storage.module';
+import { buildZip } from './zip';
 
 @Controller({ path: 'assets', version: '1' })
 @UseGuards(HybridAuthGuard)
@@ -66,6 +67,41 @@ export class AssetsController {
       `${asset.name}.${file.format.toLowerCase()}`,
     );
     return { url, expiresIn: 900, format: file.format };
+  }
+
+  /** Download a ZIP package: model + metadata.json + export notice (spec §82). */
+  @Get(':id/package')
+  @ApiScopes('assets:read')
+  async package(@CurrentUser() user: AuthUser, @Param('id') id: string) {
+    const asset = await this.assertOwned(user.id, id);
+    const version = await this.prisma.assetVersion.findFirst({
+      where: { assetId: asset.id },
+      orderBy: { version: 'desc' },
+      include: { files: { where: { role: 'MODEL' } } },
+    });
+    const model = version?.files.find((f) => !f.channel) ?? version?.files[0];
+    if (!model) throw new VeyraError(ErrorCode.NOT_FOUND, 'No model file to package');
+
+    const modelBytes = await this.storage.getObject(model.storageKey);
+    const metadata = {
+      asset: { id: asset.id, name: asset.name, type: asset.type, provider: asset.providerId },
+      model: { format: model.format, vertexCount: version?.vertexCount, faceCount: version?.faceCount },
+      generatedBy: `${asset.modelFamily ?? ''} ${asset.modelVersion ?? ''}`.trim(),
+      seed: asset.seed,
+      exportedAt: new Date().toISOString(),
+    };
+    const notice =
+      'Assets generated with VEYRA 3D. Third-party AI model licenses apply — see the platform model registry and THIRD_PARTY_NOTICES.\n';
+    const zip = buildZip([
+      { name: `model.${model.format.toLowerCase()}`, data: modelBytes },
+      { name: 'metadata.json', data: Buffer.from(JSON.stringify(metadata, null, 2)) },
+      { name: 'NOTICE.txt', data: Buffer.from(notice) },
+    ]);
+
+    const zipKey = `packages/${asset.id}/v${version?.version ?? 1}.zip`;
+    await this.storage.putObject(zipKey, zip, 'application/zip');
+    const url = await this.storage.presignDownload(zipKey, 900, `${asset.name}.zip`);
+    return { url, expiresIn: 900, sizeBytes: zip.length };
   }
 
   @Delete(':id')

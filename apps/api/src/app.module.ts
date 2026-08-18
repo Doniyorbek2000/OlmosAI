@@ -14,6 +14,11 @@ import { AssetProcessingQueueModule } from './assets/asset-processing.queue';
 import { AuthModule } from './auth/auth.module';
 import { ApiKeysModule } from './api-keys/api-keys.module';
 import { WebhooksModule } from './webhooks/webhooks.module';
+import { FeatureFlagsModule } from './feature-flags/feature-flags.module';
+import { ModerationModule } from './moderation/moderation.module';
+import { NotificationsModule } from './notifications/notifications.module';
+import { GalleryModule } from './gallery/gallery.module';
+import { AgentModule } from './agent/agent.module';
 import { ProjectsModule } from './projects/projects.module';
 import { UploadsModule } from './uploads/uploads.module';
 import { GenerationsModule } from './generations/generations.module';
@@ -31,6 +36,9 @@ import { RequestIdMiddleware } from './common/request-id.middleware';
     PrismaModule,
     RedisModule,
     StorageModule,
+    FeatureFlagsModule,
+    ModerationModule,
+    NotificationsModule,
     BillingModule,
     OrchestratorModule,
     WorkflowsModule,
@@ -43,6 +51,8 @@ import { RequestIdMiddleware } from './common/request-id.middleware';
     AuthModule,
     ApiKeysModule,
     WebhooksModule,
+    GalleryModule,
+    AgentModule,
     ProjectsModule,
     UploadsModule,
     GenerationsModule,

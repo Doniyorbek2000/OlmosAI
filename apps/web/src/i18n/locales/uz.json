@@ -1,0 +1,5 @@
+{
+  "nav": { "dashboard": "Boshqaruv paneli", "textTo3d": "Matndan 3D", "imageTo3d": "Rasmdan 3D", "projects": "Loyihalar", "assets": "Aktivlar", "billing": "Toʻlovlar", "developer": "Dasturchi", "motion": "Animatsiya", "worlds": "Olamlar", "admin": "Administrator", "gallery": "Galereya" },
+  "common": { "generate": "Yaratish", "download": "Yuklab olish", "signIn": "Kirish", "signUp": "Roʻyxatdan oʻtish", "signOut": "Chiqish", "credits": "Kreditlar", "loading": "Yuklanmoqda…" },
+  "landing": { "tagline": "Sunʼiy intellekt bilan professional 3D yarating" }
+}

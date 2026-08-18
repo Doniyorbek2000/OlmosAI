@@ -1,0 +1,39 @@
+# VEYRA 3D production reverse proxy (Caddy). TLS is automatic in Caddy or
+# terminated at the ingress. Adjust the site address for your domain.
+#
+#   caddy run --config infra/docker/Caddyfile
+{
+	# email you@example.com   # uncomment for automatic Let's Encrypt TLS
+}
+
+veyra3d.example.com {
+	encode zstd gzip
+
+	# Developer API + internal API under /api and /v1.
+	@api path /api/* /v1/*
+	handle @api {
+		# Allow large 3D uploads proxied through (presign flow uploads direct to
+		# storage, but keep a generous ceiling for any proxied bodies).
+		request_body {
+			max_size 210MB
+		}
+		reverse_proxy api:4000
+	}
+
+	# Prometheus metrics are internal-only; do not expose publicly.
+	@metrics path /api/metrics
+	handle @metrics {
+		respond 404
+	}
+
+	# Everything else → the Next.js web app.
+	handle {
+		reverse_proxy web:3000
+	}
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+	}
+}

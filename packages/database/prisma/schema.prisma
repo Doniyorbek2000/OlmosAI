@@ -64,6 +64,7 @@ model User {
   verifications  VerificationToken[]
   animations     AnimationAsset[]
   worlds         World[]
+  likes          AssetLike[]
 
   @@index([status])
   @@index([deletedAt])
@@ -343,6 +344,10 @@ model Asset {
   isPublic    Boolean   @default(false)
   // Prompt privacy is independent of asset publicity (spec §81).
   promptPublic Boolean  @default(false)
+  // Public gallery counters (spec §40).
+  viewCount   Int       @default(0)
+  likeCount   Int       @default(0)
+  publishedAt DateTime?
 
   // Denormalized pointer to the "current" version for fast reads.
   currentVersionId String? @db.Uuid
@@ -365,11 +370,27 @@ model Asset {
   animations AnimationAsset[] @relation("CharacterAnimations")
   // Rig/skeleton metadata for CHARACTER assets (joints, hierarchy, bind pose).
   rig Json?
+  likes AssetLike[]
 
   @@index([userId, deletedAt])
   @@index([projectId])
-  @@index([isPublic])
+  @@index([isPublic, publishedAt])
   @@map("assets")
+}
+
+// A user's like on a public gallery asset (spec §40). Unique per (user, asset).
+model AssetLike {
+  id      String @id @default(uuid()) @db.Uuid
+  userId  String @db.Uuid
+  user    User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  assetId String @db.Uuid
+  asset   Asset  @relation(fields: [assetId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([userId, assetId])
+  @@index([assetId])
+  @@map("asset_likes")
 }
 
 model AssetVersion {
