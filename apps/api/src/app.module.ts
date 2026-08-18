@@ -12,6 +12,8 @@ import { JobsModule } from './jobs/jobs.module';
 import { GenerationQueueModule } from './generations/generation-queue';
 import { AssetProcessingQueueModule } from './assets/asset-processing.queue';
 import { AuthModule } from './auth/auth.module';
+import { ApiKeysModule } from './api-keys/api-keys.module';
+import { WebhooksModule } from './webhooks/webhooks.module';
 import { ProjectsModule } from './projects/projects.module';
 import { UploadsModule } from './uploads/uploads.module';
 import { GenerationsModule } from './generations/generations.module';
@@ -35,6 +37,8 @@ import { RequestIdMiddleware } from './common/request-id.middleware';
     AssetProcessingQueueModule,
     // Features
     AuthModule,
+    ApiKeysModule,
+    WebhooksModule,
     ProjectsModule,
     UploadsModule,
     GenerationsModule,

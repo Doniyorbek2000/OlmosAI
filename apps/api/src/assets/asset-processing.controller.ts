@@ -1,6 +1,8 @@
-import { Body, Controller, Param, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Param, Post, UseGuards, UseInterceptors } from '@nestjs/common';
 import { IsBoolean, IsIn, IsInt, IsOptional, Max, Min } from 'class-validator';
-import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { HybridAuthGuard } from '../api-keys/hybrid-auth.guard';
+import { ApiScopes } from '../api-keys/api-scopes.decorator';
+import { ApiUsageInterceptor } from '../api-keys/api-usage.interceptor';
 import { CurrentUser, type AuthUser } from '../auth/current-user.decorator';
 import { AssetProcessingService } from './asset-processing.service';
 
@@ -37,7 +39,9 @@ class GameReadyDto {
 }
 
 @Controller({ path: 'assets', version: '1' })
-@UseGuards(JwtAuthGuard)
+@UseGuards(HybridAuthGuard)
+@UseInterceptors(ApiUsageInterceptor)
+@ApiScopes('assets:write')
 export class AssetProcessingController {
   constructor(private readonly processing: AssetProcessingService) {}
 

@@ -1,13 +1,14 @@
 import { Controller, Delete, Get, Inject, Param, Query, UseGuards } from '@nestjs/common';
 import { StorageService } from '@veyra/storage';
 import { ErrorCode, VeyraError } from '@veyra/types';
-import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { HybridAuthGuard } from '../api-keys/hybrid-auth.guard';
+import { ApiScopes } from '../api-keys/api-scopes.decorator';
 import { CurrentUser, type AuthUser } from '../auth/current-user.decorator';
 import { PrismaService } from '../prisma/prisma.service';
 import { STORAGE } from '../storage/storage.module';
 
 @Controller({ path: 'assets', version: '1' })
-@UseGuards(JwtAuthGuard)
+@UseGuards(HybridAuthGuard)
 export class AssetsController {
   constructor(
     private readonly prisma: PrismaService,
@@ -15,6 +16,7 @@ export class AssetsController {
   ) {}
 
   @Get()
+  @ApiScopes('assets:read')
   list(@CurrentUser() user: AuthUser, @Query('take') take?: string) {
     return this.prisma.asset.findMany({
       where: { userId: user.id, deletedAt: null },
@@ -25,6 +27,7 @@ export class AssetsController {
   }
 
   @Get(':id')
+  @ApiScopes('assets:read')
   async get(@CurrentUser() user: AuthUser, @Param('id') id: string) {
     const asset = await this.assertOwned(user.id, id);
     return this.prisma.asset.findUnique({
@@ -40,6 +43,7 @@ export class AssetsController {
 
   /** Short-lived signed download URL for a specific asset file. */
   @Get(':id/download')
+  @ApiScopes('assets:read')
   async download(
     @CurrentUser() user: AuthUser,
     @Param('id') id: string,
@@ -65,6 +69,7 @@ export class AssetsController {
   }
 
   @Delete(':id')
+  @ApiScopes('assets:write')
   async remove(@CurrentUser() user: AuthUser, @Param('id') id: string) {
     const asset = await this.assertOwned(user.id, id);
     await this.prisma.asset.update({ where: { id: asset.id }, data: { deletedAt: new Date() } });

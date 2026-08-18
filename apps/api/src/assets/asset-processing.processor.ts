@@ -4,6 +4,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CreditsService } from '../billing/credits.service';
 import { AssetQualityService } from './asset-quality.service';
 import { JobEventsService } from '../jobs/job-events.service';
+import { WebhooksService } from '../webhooks/webhooks.service';
 import { AssetWorkerClient, type ProcessedFile } from './asset-worker.client';
 import type { ProcessingPlan } from './game-ready';
 
@@ -29,6 +30,7 @@ export class AssetProcessingProcessor {
     private readonly quality: AssetQualityService,
     private readonly events: JobEventsService,
     private readonly worker: AssetWorkerClient,
+    private readonly webhooks: WebhooksService,
   ) {}
 
   async process(jobId: string): Promise<void> {
@@ -86,6 +88,12 @@ export class AssetProcessingProcessor {
         },
       });
       await this.emit(job.id, JobStatus.COMPLETED, 100, 'COMPLETED', `Created v${version.version}`);
+      await this.webhooks.emit(job.userId, 'asset.created', {
+        assetId: input.assetId,
+        versionId: version.id,
+        version: version.version,
+        jobId: job.id,
+      });
     } catch (err) {
       const verr = err instanceof VeyraError ? err : new VeyraError(ErrorCode.ASSET_PROCESSING_FAILED, String(err));
       this.logger.error(`Asset job ${job.id} failed: ${verr.code} ${verr.message}`);

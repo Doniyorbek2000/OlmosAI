@@ -15,6 +15,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CreditsService } from '../billing/credits.service';
 import { AssetQualityService } from '../assets/asset-quality.service';
 import { JobEventsService } from '../jobs/job-events.service';
+import { WebhooksService } from '../webhooks/webhooks.service';
 import { TextTo3DWorkflow, type TextTo3DInput } from '../workflows/text-to-3d.workflow';
 import { ProviderRegistryService } from './provider-registry.service';
 import { resolveMode } from './mode-resolver';
@@ -51,6 +52,7 @@ export class GenerationProcessor {
     private readonly events: JobEventsService,
     private readonly orchestrator: ProviderRegistryService,
     private readonly textWorkflow: TextTo3DWorkflow,
+    private readonly webhooks: WebhooksService,
   ) {}
 
   async process(jobId: string): Promise<void> {
@@ -70,6 +72,7 @@ export class GenerationProcessor {
       where: { id: job.id },
       data: { startedAt: new Date() },
     });
+    await this.webhooks.emit(job.userId, 'generation.started', { jobId: job.id, kind: job.kind });
 
     const controller = new AbortController();
     let cancelled = false;
@@ -127,6 +130,8 @@ export class GenerationProcessor {
         },
       });
       await this.emit(job.id, JobStatus.COMPLETED, 100, 'COMPLETED', 'Generation complete');
+      await this.webhooks.emit(job.userId, 'generation.completed', { jobId: job.id, assetId: asset.id });
+      await this.webhooks.emit(job.userId, 'asset.created', { assetId: asset.id, jobId: job.id });
     } catch (err) {
       if (cancelled) {
         await this.finishCancelled(job.id, job.userId, job.reservedCredits);
@@ -146,6 +151,7 @@ export class GenerationProcessor {
         },
       });
       await this.emit(job.id, JobStatus.FAILED, 0, 'FAILED', verr.message);
+      await this.webhooks.emit(job.userId, 'generation.failed', { jobId: job.id, code: verr.code });
     }
   }
 

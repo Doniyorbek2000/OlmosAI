@@ -63,9 +63,19 @@ Legend: ✅ implemented + tested · 🟩 implemented · 🟨 scaffolded/partial 
 - ✅ Billing web page (plans, packs, portal, transactions) + admin billing
   aggregates (revenue, MRR, credits granted/consumed, plan breakdown)
 
-## Phase 7 — Developer API
-- 🟩 API-key hashing/scopes/usage schema; documented endpoints
-- 🟨 `/v1` controllers + webhook delivery worker — partial
+## Phase 7 — Developer API ✅
+- ✅ API keys: create (plaintext once)/list/revoke, hashed storage, scopes,
+  test/live prefixes — service tested (create/scopes/authenticate/revoke/expiry)
+- ✅ HybridAuthGuard: same endpoints accept an API key OR a UI session; API-key
+  requests are scope-checked + Redis rate-limited per key; ApiUsage recorded via
+  interceptor
+- ✅ Developer endpoints reachable by key: generations (image/text), jobs,
+  assets (read/download/process) with per-endpoint scopes
+- ✅ Webhooks: register/list/delete (https-only, signing secret shown once),
+  HMAC-SHA256 signed deliveries with timestamp, exponential-backoff retry +
+  delivery log, delivery worker; emitted on generation.started/completed/failed
+  and asset.created — signing + retry + endpoint-selection unit tested
+- ✅ Web /api-keys (developer) page: keys + webhooks + usage example
 
 ## Phase 8 — Admin & observability
 - 🟩 Admin data model (providers/workers/analytics); Prometheus metrics in workers

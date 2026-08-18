@@ -8,8 +8,10 @@ import { AppConfigService } from './config/config.service';
 import { GenerationProcessor } from './orchestrator/generation-processor.service';
 import { ProviderRegistryService } from './orchestrator/provider-registry.service';
 import { AssetProcessingProcessor } from './assets/asset-processing.processor';
+import { WebhookDeliveryProcessor } from './webhooks/webhook-delivery.processor';
 import type { GenerationJobData } from './generations/generation-queue';
 import type { AssetProcessingJobData } from './assets/asset-processing.queue';
+import type { WebhookDeliveryJobData } from './webhooks/webhook.queue';
 import { REDIS } from './redis/redis.module';
 
 /**
@@ -23,6 +25,7 @@ async function bootstrap(): Promise<void> {
   const config = app.get(AppConfigService);
   const processor = app.get(GenerationProcessor);
   const assetProcessor = app.get(AssetProcessingProcessor);
+  const webhookProcessor = app.get(WebhookDeliveryProcessor);
   const orchestrator = app.get(ProviderRegistryService);
   const redis = app.get<Redis>(REDIS);
 
@@ -53,6 +56,18 @@ async function bootstrap(): Promise<void> {
     logger.error(`Asset job ${job?.data?.jobId} failed at queue level: ${err.message}`);
   });
 
+  const webhookWorker = startWorker<WebhookDeliveryJobData>(
+    QUEUE_NAMES.WEBHOOK,
+    redis,
+    async (job) => {
+      await webhookProcessor.deliver(job.data.deliveryId);
+    },
+    concurrency,
+  );
+  webhookWorker.on('failed', (job, err) => {
+    logger.error(`Webhook delivery ${job?.data?.deliveryId} failed: ${err.message}`);
+  });
+
   // Periodic provider health refresh feeds routing + circuit breaking.
   const healthTimer = setInterval(() => {
     void orchestrator.refreshAllHealth();
@@ -62,7 +77,7 @@ async function bootstrap(): Promise<void> {
 
   const shutdown = async () => {
     clearInterval(healthTimer);
-    await Promise.all([worker.close(), assetWorker.close()]);
+    await Promise.all([worker.close(), assetWorker.close(), webhookWorker.close()]);
     await app.close();
     process.exit(0);
   };

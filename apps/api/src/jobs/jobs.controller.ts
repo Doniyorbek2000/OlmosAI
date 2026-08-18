@@ -1,13 +1,15 @@
 import { Controller, Get, Param, Query, Sse, UseGuards, MessageEvent } from '@nestjs/common';
 import { map, type Observable } from 'rxjs';
 import { ErrorCode, VeyraError } from '@veyra/types';
-import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { HybridAuthGuard } from '../api-keys/hybrid-auth.guard';
+import { ApiScopes } from '../api-keys/api-scopes.decorator';
 import { CurrentUser, type AuthUser } from '../auth/current-user.decorator';
 import { PrismaService } from '../prisma/prisma.service';
 import { JobEventsService } from './job-events.service';
 
 @Controller({ path: 'jobs', version: '1' })
-@UseGuards(JwtAuthGuard)
+@UseGuards(HybridAuthGuard)
+@ApiScopes('generations:read')
 export class JobsController {
   constructor(
     private readonly prisma: PrismaService,
