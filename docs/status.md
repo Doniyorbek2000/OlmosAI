@@ -133,13 +133,38 @@ provider → validates polygon budget + quality → exports. Parser + workflow a
 implemented and tested; the geometry-optimization (retopo/decimate/LOD) asset
 pass is the remaining piece (Phase 4).
 
+## Master-spec audit (Phases 1–10)
+
+Cross-cutting requirements implemented in the audit pass:
+- ✅ Auth §17/§83: email verification + resend, password reset, forgot-password
+  (no enumeration), account deletion + cascade cleanup, per-IP auth rate limits,
+  dev mail (logs links) — web verify/forgot/reset/settings pages.
+- ✅ Public gallery §40/§41/§81: publish (moderation-screened), likes, views,
+  creator attribution, prompt privacy; public /gallery page + ModerationService.
+- ✅ Notifications: in-app notify + endpoints; emitted on job completion/failure.
+- ✅ Runtime feature flags §62: DB-override FeatureFlagsService + admin controls.
+- ✅ AI Agent §37: /v1/agent/plan (NL → structured, approved-ops-only plan).
+- ✅ Retexture §31 (recolor op), presets §55, cross-entity search §42.
+- ✅ ZIP package download §82, prod Caddy proxy §76, i18n scaffold §61 (en/uz/ru).
+- ✅ Multi-image §36 (kind handled), asset versioning §21, idempotency §71/§72.
+
+Documented, not production-enabled (by design / external dependency):
+- ⬜ Real GPU model weights for TRELLIS.2 / TripoSG / SF3D / Hunyuan3D / HY-Motion /
+  HY-World — adapters + workers + Dockerfiles complete; run on GPU hosts after
+  pinning commits + license sign-off (HY-* geo/MAU-restricted, disabled in prod).
+- ⬜ Full E2E harness §47 (needs a live Postgres/Redis/MinIO + worker stack in CI),
+  benchmark dataset §88, SMTP transport wiring, Elasticsearch/OpenSearch backend,
+  organizations/teams/SSO §84 (schema leaves room, not built).
+
 ## Verification
-- 96 Node unit tests (types, config, ai-sdk router/breaker/executor, storage,
+- 102 Node unit tests (types, config, ai-sdk router/breaker/executor, storage,
   auth, and api: credit-ledger, mode-resolver, workflow-engine, prompt-parser,
   png/concept-image, game-ready, billing event-application + stripe-normalizer,
   api-key service, webhook signing/backoff + emit, admin aggregation, metrics,
-  motion + world services) + 30 Python worker tests (7 generation, 12
-  asset-worker, 6 hymotion, 5 hyworld) — all green
+  motion + world services, agent, moderation, zip) + 31 Python worker tests
+  (7 generation, 13 asset-worker, 6 hymotion, 5 hyworld) — all green
+- `pnpm build`/`typecheck`/`test` pass; `next build` passes; Prisma schema
+  validates; docker-compose config validates; ruff clean
 - `pnpm build`/`typecheck`/`test` pass; `next build` passes; Prisma schema
   validates; docker-compose config validates
 - `pnpm build`, `pnpm typecheck`, `pnpm test` pass; `next build` passes;

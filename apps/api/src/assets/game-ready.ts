@@ -68,6 +68,14 @@ export function buildRemeshPlan(): ProcessingPlan {
   };
 }
 
+export function buildRetexturePlan(color: string): ProcessingPlan {
+  return {
+    operations: [{ op: AssetOperation.RECOLOR, params: { color } }],
+    outputFormats: ['GLB'],
+    label: 'retextured',
+  };
+}
+
 export function buildConvertPlan(format: string): ProcessingPlan {
   return {
     operations: [{ op: AssetOperation.CONVERT_FORMAT, params: { format } }],

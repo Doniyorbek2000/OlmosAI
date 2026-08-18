@@ -117,6 +117,25 @@ def generate_uv(mesh: trimesh.Trimesh, _params: dict[str, Any]) -> trimesh.Trime
         return mesh
 
 
+def _hex_to_rgb(color: str) -> tuple[int, int, int]:
+    color = color.lstrip("#")
+    if len(color) != 6:
+        return (200, 200, 200)
+    return tuple(int(color[i : i + 2], 16) for i in (0, 2, 4))  # type: ignore[return-value]
+
+
+def recolor(mesh: trimesh.Trimesh, params: dict[str, Any]) -> trimesh.Trimesh:
+    """Basic retexture: set a uniform base color. A real texture-generation
+    provider (e.g. Hunyuan texture) would replace this; recolor keeps the
+    endpoint functional without a GPU texture model."""
+    r, g, b = _hex_to_rgb(str(params.get("color", "#cccccc")))
+    m = mesh.copy()
+    m.visual = trimesh.visual.ColorVisuals(
+        mesh=m, vertex_colors=np.tile([r, g, b, 255], (len(m.vertices), 1))
+    )
+    return m
+
+
 def bake_texture(mesh: trimesh.Trimesh, _params: dict[str, Any]) -> trimesh.Trimesh:
     """Placeholder: real PBR baking requires Blender/renderer (asset-worker GPU
     profile). No-op here; documented in README."""
@@ -141,4 +160,5 @@ PIPELINE_OPS = {
     "OPTIMIZE": optimize,
     "GENERATE_UV": generate_uv,
     "BAKE_TEXTURE": bake_texture,
+    "RECOLOR": recolor,
 }

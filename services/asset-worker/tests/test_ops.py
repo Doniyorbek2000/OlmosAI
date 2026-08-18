@@ -57,6 +57,14 @@ def test_generate_collider_is_convex():
     assert out.is_convex
 
 
+def test_recolor_sets_uniform_vertex_color():
+    out = ops.recolor(sphere(), {"color": "#ff0000"})
+    colors = out.visual.vertex_colors
+    assert (colors[:, 0] == 255).all()
+    assert (colors[:, 1] == 0).all()
+    assert (colors[:, 2] == 0).all()
+
+
 def test_export_glb_and_obj():
     glb, ct, ext = export_mesh(box(), "GLB")
     assert glb[:4] == b"glTF" and ext == "glb"

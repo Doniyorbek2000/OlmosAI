@@ -1,5 +1,5 @@
 import { Body, Controller, Param, Post, UseGuards, UseInterceptors } from '@nestjs/common';
-import { IsBoolean, IsIn, IsInt, IsOptional, Max, Min } from 'class-validator';
+import { IsBoolean, IsIn, IsInt, IsOptional, IsString, Matches, Max, Min } from 'class-validator';
 import { HybridAuthGuard } from '../api-keys/hybrid-auth.guard';
 import { ApiScopes } from '../api-keys/api-scopes.decorator';
 import { ApiUsageInterceptor } from '../api-keys/api-usage.interceptor';
@@ -16,6 +16,12 @@ class DecimateDto {
 class ConvertDto {
   @IsIn(['GLB', 'GLTF', 'OBJ', 'STL', 'PLY'])
   format!: 'GLB' | 'GLTF' | 'OBJ' | 'STL' | 'PLY';
+}
+
+class RetextureDto {
+  @IsString()
+  @Matches(/^#[0-9a-fA-F]{6}$/, { message: 'color must be a #RRGGBB hex' })
+  color!: string;
 }
 
 class GameReadyDto {
@@ -58,6 +64,11 @@ export class AssetProcessingController {
   @Post(':id/remesh')
   remesh(@CurrentUser() user: AuthUser, @Param('id') id: string) {
     return this.processing.remesh(user.id, id);
+  }
+
+  @Post(':id/retexture')
+  retexture(@CurrentUser() user: AuthUser, @Param('id') id: string, @Body() dto: RetextureDto) {
+    return this.processing.retexture(user.id, id, dto.color);
   }
 
   @Post(':id/convert')

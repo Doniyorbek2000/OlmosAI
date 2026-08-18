@@ -10,6 +10,7 @@ import {
   buildGameReadyPlan,
   buildOptimizePlan,
   buildRemeshPlan,
+  buildRetexturePlan,
   type GameReadyOptions,
   type ProcessingPlan,
 } from './game-ready';
@@ -36,6 +37,10 @@ export class AssetProcessingService {
 
   remesh(userId: string, assetId: string) {
     return this.enqueue(userId, assetId, 'REMESH', buildRemeshPlan());
+  }
+
+  retexture(userId: string, assetId: string, color: string) {
+    return this.enqueue(userId, assetId, 'OPTIMIZE', buildRetexturePlan(color));
   }
 
   convert(userId: string, assetId: string, format: string) {

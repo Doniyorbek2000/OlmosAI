@@ -19,6 +19,8 @@ import { ModerationModule } from './moderation/moderation.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { GalleryModule } from './gallery/gallery.module';
 import { AgentModule } from './agent/agent.module';
+import { PresetsModule } from './presets/presets.module';
+import { SearchModule } from './search/search.module';
 import { ProjectsModule } from './projects/projects.module';
 import { UploadsModule } from './uploads/uploads.module';
 import { GenerationsModule } from './generations/generations.module';
@@ -53,6 +55,8 @@ import { RequestIdMiddleware } from './common/request-id.middleware';
     WebhooksModule,
     GalleryModule,
     AgentModule,
+    PresetsModule,
+    SearchModule,
     ProjectsModule,
     UploadsModule,
     GenerationsModule,
