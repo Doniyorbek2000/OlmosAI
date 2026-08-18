@@ -1,0 +1,811 @@
+// VEYRA 3D — Prisma schema (system of record).
+// Conventions: UUID primary keys, createdAt/updatedAt on mutable entities,
+// deletedAt soft-deletes where user data must be recoverable, explicit
+// indexes + FKs + cascade rules. Money/credits/job finalization run in
+// transactions in application code (see docs/billing.md).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================================
+// AUTH & USERS
+// ============================================================================
+
+enum UserRole {
+  USER
+  ADMIN
+  SUPPORT
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+  DELETION_PENDING
+}
+
+model User {
+  id            String     @id @default(uuid()) @db.Uuid
+  email         String     @unique
+  emailVerified DateTime?
+  passwordHash  String? // null for OAuth-only accounts
+  displayName   String?
+  avatarUrl     String?
+  role          UserRole   @default(USER)
+  status        UserStatus @default(ACTIVE)
+  locale        String     @default("en")
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  sessions       Session[]
+  accounts       Account[]
+  projects       Project[]
+  assets         Asset[]
+  jobs           GenerationJob[]
+  apiKeys        ApiKey[]
+  subscription   Subscription?
+  creditBalance  CreditBalance?
+  creditTxns     CreditTransaction[]
+  payments       Payment[]
+  invoices       Invoice[]
+  webhooks       WebhookEndpoint[]
+  notifications  Notification[]
+  auditLogs      AuditLog[]
+  settings       UserSetting?
+  verifications  VerificationToken[]
+
+  @@index([status])
+  @@index([deletedAt])
+  @@map("users")
+}
+
+// OAuth / external identity links (Google, GitHub, Apple, ...).
+model Account {
+  id                String  @id @default(uuid()) @db.Uuid
+  userId            String  @db.Uuid
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  provider          String // "google" | "github" | "apple"
+  providerAccountId String
+  accessToken       String? @db.Text
+  refreshToken      String? @db.Text
+  expiresAt         Int?
+
+  createdAt DateTime @default(now())
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+  @@map("accounts")
+}
+
+// Refresh-token-backed sessions. We store only a HASH of the refresh token.
+model Session {
+  id                String   @id @default(uuid()) @db.Uuid
+  userId            String   @db.Uuid
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  refreshTokenHash  String   @unique
+  userAgent         String?
+  ip                String?
+  expiresAt         DateTime
+  revokedAt         DateTime?
+  rotatedFromId     String?  @db.Uuid
+
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("sessions")
+}
+
+enum VerificationPurpose {
+  EMAIL_VERIFY
+  PASSWORD_RESET
+}
+
+model VerificationToken {
+  id        String              @id @default(uuid()) @db.Uuid
+  userId    String              @db.Uuid
+  user      User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String              @unique
+  purpose   VerificationPurpose
+  expiresAt DateTime
+  usedAt    DateTime?
+
+  createdAt DateTime @default(now())
+
+  @@index([userId, purpose])
+  @@map("verification_tokens")
+}
+
+model UserSetting {
+  id             String  @id @default(uuid()) @db.Uuid
+  userId         String  @unique @db.Uuid
+  user           User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  theme          String  @default("dark")
+  emailMarketing Boolean @default(false)
+  defaultPublic  Boolean @default(false)
+
+  updatedAt DateTime @updatedAt
+
+  @@map("user_settings")
+}
+
+// ============================================================================
+// PLANS, SUBSCRIPTIONS & BILLING
+// ============================================================================
+
+model Plan {
+  id                  String  @id @default(uuid()) @db.Uuid
+  key                 String  @unique // FREE | STARTER | PRO | STUDIO | ENTERPRISE
+  name                String
+  description         String?
+  priceCentsMonthly   Int     @default(0)
+  currency            String  @default("usd")
+  monthlyCredits      Int     @default(0)
+  storageGb           Int     @default(1)
+  parallelGenerations Int     @default(1)
+  maxQualityTier      String  @default("STANDARD")
+  privateAssets       Boolean @default(false)
+  apiAccess           Boolean @default(false)
+  priorityQueue       Boolean @default(false)
+  active              Boolean @default(true)
+  sortOrder           Int     @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  subscriptions Subscription[]
+
+  @@map("plans")
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  TRIALING
+  PAST_DUE
+  CANCELED
+  INCOMPLETE
+}
+
+model Subscription {
+  id                   String             @id @default(uuid()) @db.Uuid
+  userId               String             @unique @db.Uuid
+  user                 User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  planId               String             @db.Uuid
+  plan                 Plan               @relation(fields: [planId], references: [id])
+  status               SubscriptionStatus @default(ACTIVE)
+  provider             String             @default("stripe")
+  externalId           String? // stripe subscription id
+  currentPeriodStart   DateTime?
+  currentPeriodEnd     DateTime?
+  cancelAtPeriodEnd    Boolean            @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+  @@index([externalId])
+  @@map("subscriptions")
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCEEDED
+  FAILED
+  REFUNDED
+}
+
+model Payment {
+  id         String        @id @default(uuid()) @db.Uuid
+  userId     String        @db.Uuid
+  user       User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  provider   String        @default("stripe")
+  externalId String?       @unique
+  amountCents Int
+  currency   String        @default("usd")
+  status     PaymentStatus @default(PENDING)
+  // Idempotency for webhook processing.
+  eventId    String?       @unique
+  metadata   Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  invoice Invoice?
+
+  @@index([userId])
+  @@index([status])
+  @@map("payments")
+}
+
+model Invoice {
+  id         String  @id @default(uuid()) @db.Uuid
+  userId     String  @db.Uuid
+  user       User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  paymentId  String? @unique @db.Uuid
+  payment    Payment? @relation(fields: [paymentId], references: [id])
+  number     String  @unique
+  amountCents Int
+  currency   String  @default("usd")
+  pdfKey     String? // object storage key
+  metadata   Json?
+
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@map("invoices")
+}
+
+model CreditBalance {
+  id       String @id @default(uuid()) @db.Uuid
+  userId   String @unique @db.Uuid
+  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // Available = granted - spent - reserved.
+  balance  Int    @default(0)
+  reserved Int    @default(0)
+
+  updatedAt DateTime @updatedAt
+
+  @@map("credit_balances")
+}
+
+enum CreditTxnType {
+  GRANT // plan renewal / purchase
+  RESERVE // hold for a job
+  RELEASE // release a reservation (refund on failure)
+  CAPTURE // finalize a reservation as spend
+  ADJUST // manual admin adjustment
+}
+
+model CreditTransaction {
+  id        String        @id @default(uuid()) @db.Uuid
+  userId    String        @db.Uuid
+  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      CreditTxnType
+  amount    Int // signed; e.g. RESERVE negative-effective, GRANT positive
+  reason    String?
+  jobId     String?       @db.Uuid
+  job       GenerationJob? @relation(fields: [jobId], references: [id])
+  // Idempotency: a given (jobId,type) reservation happens at most once.
+  idempotencyKey String?  @unique
+
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([jobId])
+  @@map("credit_transactions")
+}
+
+// ============================================================================
+// PROJECTS, ASSETS, VERSIONS, MATERIALS, TEXTURES
+// ============================================================================
+
+enum ProjectType {
+  OBJECT
+  CHARACTER
+  GAME_ASSET
+  PRODUCT
+  WORLD
+}
+
+model Project {
+  id          String      @id @default(uuid()) @db.Uuid
+  userId      String      @db.Uuid
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name        String
+  description String?
+  type        ProjectType @default(OBJECT)
+  isPublic    Boolean     @default(false)
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  assets Asset[]
+  jobs   GenerationJob[]
+
+  @@index([userId, deletedAt])
+  @@index([type])
+  @@map("projects")
+}
+
+enum AssetType {
+  MODEL
+  CHARACTER
+  GAME_ASSET
+  PRODUCT
+  WORLD
+  ANIMATION
+}
+
+model Asset {
+  id          String    @id @default(uuid()) @db.Uuid
+  userId      String    @db.Uuid
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  projectId   String?   @db.Uuid
+  project     Project?  @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  name        String
+  type        AssetType @default(MODEL)
+  isPublic    Boolean   @default(false)
+  // Prompt privacy is independent of asset publicity (spec §81).
+  promptPublic Boolean  @default(false)
+
+  // Denormalized pointer to the "current" version for fast reads.
+  currentVersionId String? @db.Uuid
+
+  // Provenance for reproducibility (spec §79/§80).
+  sourceKind    String? // "image" | "text" | "upload" | "multi-image"
+  providerId    String?
+  modelFamily   String?
+  modelVersion  String?
+  seed          Int?
+  generationParams Json?
+  prompt        String?
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  versions AssetVersion[]
+
+  @@index([userId, deletedAt])
+  @@index([projectId])
+  @@index([isPublic])
+  @@map("assets")
+}
+
+model AssetVersion {
+  id        String  @id @default(uuid()) @db.Uuid
+  assetId   String  @db.Uuid
+  asset     Asset   @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  version   Int // 1-based, increments per asset
+  label     String? // "original" | "remeshed" | "textured" | "optimized"
+  parentId  String? @db.Uuid // parent version for rollback lineage
+  parent    AssetVersion?  @relation("VersionLineage", fields: [parentId], references: [id])
+  children  AssetVersion[] @relation("VersionLineage")
+
+  // Objective metrics from AssetQualityService.
+  qualityScore Int?
+  vertexCount  Int?
+  faceCount    Int?
+  triangleCount Int?
+  materialCount Int?
+  textureCount  Int?
+  dimensions    Json? // {min:[x,y,z], max:[x,y,z]}
+  fileSizeBytes Int?
+
+  createdAt DateTime @default(now())
+
+  files     AssetFile[]
+  materials Material[]
+
+  @@unique([assetId, version])
+  @@index([assetId])
+  @@map("asset_versions")
+}
+
+enum FileRole {
+  MODEL
+  TEXTURE
+  METADATA
+  PREVIEW
+  THUMBNAIL
+}
+
+model AssetFile {
+  id        String       @id @default(uuid()) @db.Uuid
+  versionId String       @db.Uuid
+  version   AssetVersion @relation(fields: [versionId], references: [id], onDelete: Cascade)
+  role      FileRole
+  format    String // GLB | GLTF | OBJ | FBX | STL | USDZ | PNG | JSON
+  storageKey String // object storage key (private bucket)
+  sizeBytes  Int
+  checksum   String?
+  channel    String? // for textures: baseColor|normal|roughness|...
+
+  createdAt DateTime @default(now())
+
+  @@index([versionId])
+  @@map("asset_files")
+}
+
+model Material {
+  id        String       @id @default(uuid()) @db.Uuid
+  versionId String       @db.Uuid
+  version   AssetVersion @relation(fields: [versionId], references: [id], onDelete: Cascade)
+  name      String       @default("Material")
+  baseColor String       @default("#cccccc")
+  metallic  Float        @default(0)
+  roughness Float        @default(0.5)
+  opacity   Float        @default(1)
+  emissive  String       @default("#000000")
+  normalIntensity Float  @default(1)
+  textureScale    Float  @default(1)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  textures Texture[]
+
+  @@index([versionId])
+  @@map("materials")
+}
+
+model Texture {
+  id         String   @id @default(uuid()) @db.Uuid
+  materialId String   @db.Uuid
+  material   Material @relation(fields: [materialId], references: [id], onDelete: Cascade)
+  channel    String // baseColor|normal|roughness|metallic|ao|emissive|opacity
+  storageKey String
+  width      Int?
+  height     Int?
+
+  createdAt DateTime @default(now())
+
+  @@index([materialId])
+  @@map("textures")
+}
+
+// ============================================================================
+// GENERATION JOBS & STAGES
+// ============================================================================
+
+enum JobStatus {
+  QUEUED
+  WAITING_FOR_GPU
+  RUNNING
+  POST_PROCESSING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+enum JobKind {
+  IMAGE_TO_3D
+  MULTI_IMAGE_TO_3D
+  TEXT_TO_3D
+  RETEXTURE
+  OPTIMIZE
+  REMESH
+  GAME_READY
+  MOTION
+  WORLD
+}
+
+model GenerationJob {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @db.Uuid
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  projectId String?   @db.Uuid
+  project   Project?  @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  kind      JobKind
+  status    JobStatus @default(QUEUED)
+  mode      String? // FAST | BALANCED | QUALITY | ULTRA | GAME_READY | ...
+
+  // Idempotency: duplicate submits with the same key return the same job.
+  idempotencyKey String? @unique
+
+  // Routing outcome + provenance.
+  providerId    String?
+  modelVersion  String?
+  routingTrace  Json?
+
+  // Progress (0..100), updated from real worker stage reports.
+  progress Int @default(0)
+
+  input        Json // normalized GenerationInput (image keys, quality, ...)
+  errorCode    String?
+  errorMessage String?
+
+  resultAssetId String? @db.Uuid
+
+  reservedCredits Int  @default(0)
+  chargedCredits  Int?
+
+  queuedAt    DateTime  @default(now())
+  startedAt   DateTime?
+  completedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  stages   GenerationStage[]
+  attempts JobAttempt[]
+  cost     GenerationCost?
+  creditTxns CreditTransaction[]
+
+  @@index([userId, status])
+  @@index([status, queuedAt])
+  @@index([providerId])
+  @@map("generation_jobs")
+}
+
+enum StageStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+  SKIPPED
+}
+
+// A workflow stage (text-to-3d, game-ready). Enables resume-from-last-success.
+model GenerationStage {
+  id        String        @id @default(uuid()) @db.Uuid
+  jobId     String        @db.Uuid
+  job       GenerationJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  name      String // e.g. SHAPE_GENERATION
+  order     Int
+  status    StageStatus   @default(PENDING)
+  output    Json? // stage output persisted so a crashed worker can resume
+  errorMessage String?
+  startedAt DateTime?
+  completedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([jobId, name])
+  @@index([jobId, order])
+  @@map("generation_stages")
+}
+
+model JobAttempt {
+  id         String        @id @default(uuid()) @db.Uuid
+  jobId      String        @db.Uuid
+  job        GenerationJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  attempt    Int
+  providerId String?
+  workerId   String?       @db.Uuid
+  status     String // running | succeeded | failed
+  errorCode  String?
+  errorMessage String?
+  startedAt  DateTime      @default(now())
+  endedAt    DateTime?
+
+  @@unique([jobId, attempt])
+  @@index([jobId])
+  @@map("job_attempts")
+}
+
+// Internal cost accounting for margin analysis (spec §54).
+model GenerationCost {
+  id             String        @id @default(uuid()) @db.Uuid
+  jobId          String        @unique @db.Uuid
+  job            GenerationJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  providerId     String?
+  gpuType        String?
+  runtimeSeconds Float?
+  estimatedGpuUsd Float?
+  storageUsd     Float?
+  creditsCharged Int?
+
+  createdAt DateTime @default(now())
+
+  @@map("generation_costs")
+}
+
+// ============================================================================
+// AI PROVIDERS, MODELS, GPU WORKERS
+// ============================================================================
+
+model AIProvider {
+  id             String  @id @default(uuid()) @db.Uuid
+  providerId     String  @unique // "triposr" | "trellis2" | ...
+  displayName    String
+  enabled        Boolean @default(false)
+  priority       Int     @default(50)
+  costMultiplier Float   @default(1)
+  draining       Boolean @default(false)
+  endpointUrl    String?
+  licenseStatus  String  @default("review_required")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  models  AIProviderModel[]
+  workers GPUWorker[]
+
+  @@map("ai_providers")
+}
+
+model AIProviderModel {
+  id           String     @id @default(uuid()) @db.Uuid
+  providerId   String     @db.Uuid
+  provider     AIProvider @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  family       String
+  version      String
+  checkpointHash String?
+  upstreamCommit String?
+  capabilities String[]   // Capability[]
+  minVramMb    Int?
+
+  createdAt DateTime @default(now())
+
+  @@unique([providerId, version])
+  @@map("ai_provider_models")
+}
+
+enum WorkerStatus {
+  ONLINE
+  BUSY
+  DRAINING
+  OFFLINE
+  ERROR
+}
+
+model GPUWorker {
+  id            String       @id @default(uuid()) @db.Uuid
+  providerId    String?      @db.Uuid
+  provider      AIProvider?  @relation(fields: [providerId], references: [id], onDelete: SetNull)
+  name          String
+  environment   String // LOCAL | RUNPOD | VAST_AI | DEDICATED | KUBERNETES
+  gpuName       String?
+  vramTotalMb   Int?
+  vramUsedMb    Int?
+  temperatureC  Int?
+  maxConcurrency Int         @default(1)
+  currentJobs   Int          @default(0)
+  status        WorkerStatus @default(OFFLINE)
+  lastHeartbeat DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  heartbeats WorkerHeartbeat[]
+
+  @@index([status])
+  @@index([providerId])
+  @@map("gpu_workers")
+}
+
+model WorkerHeartbeat {
+  id         String    @id @default(uuid()) @db.Uuid
+  workerId   String    @db.Uuid
+  worker     GPUWorker @relation(fields: [workerId], references: [id], onDelete: Cascade)
+  vramUsedMb Int?
+  currentJobs Int?
+  status     WorkerStatus
+
+  createdAt DateTime @default(now())
+
+  @@index([workerId, createdAt])
+  @@map("worker_heartbeats")
+}
+
+// ============================================================================
+// DEVELOPER API, WEBHOOKS
+// ============================================================================
+
+model ApiKey {
+  id          String   @id @default(uuid()) @db.Uuid
+  userId      String   @db.Uuid
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name        String
+  // Store only the hash; prefix (vyr_live_/vyr_test_) kept for display.
+  prefix      String
+  keyHash     String   @unique
+  last4       String
+  scopes      String[]
+  livemode    Boolean  @default(false)
+  lastUsedAt  DateTime?
+  revokedAt   DateTime?
+  expiresAt   DateTime?
+
+  createdAt DateTime @default(now())
+
+  usage ApiUsage[]
+
+  @@index([userId])
+  @@map("api_keys")
+}
+
+model ApiUsage {
+  id        String  @id @default(uuid()) @db.Uuid
+  apiKeyId  String  @db.Uuid
+  apiKey    ApiKey  @relation(fields: [apiKeyId], references: [id], onDelete: Cascade)
+  endpoint  String
+  method    String
+  status    Int
+  creditsCharged Int @default(0)
+
+  createdAt DateTime @default(now())
+
+  @@index([apiKeyId, createdAt])
+  @@map("api_usage")
+}
+
+model WebhookEndpoint {
+  id       String   @id @default(uuid()) @db.Uuid
+  userId   String   @db.Uuid
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  url      String
+  // HMAC signing secret (stored to sign outbound payloads).
+  secret   String
+  events   String[] // generation.started | generation.completed | ...
+  enabled  Boolean  @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  deliveries WebhookDelivery[]
+
+  @@index([userId])
+  @@map("webhook_endpoints")
+}
+
+enum WebhookDeliveryStatus {
+  PENDING
+  DELIVERED
+  FAILED
+}
+
+model WebhookDelivery {
+  id         String                @id @default(uuid()) @db.Uuid
+  endpointId String                @db.Uuid
+  endpoint   WebhookEndpoint       @relation(fields: [endpointId], references: [id], onDelete: Cascade)
+  event      String
+  payload    Json
+  status     WebhookDeliveryStatus @default(PENDING)
+  attempts   Int                   @default(0)
+  responseStatus Int?
+  nextRetryAt DateTime?
+  deliveredAt DateTime?
+
+  createdAt DateTime @default(now())
+
+  @@index([endpointId, status])
+  @@index([status, nextRetryAt])
+  @@map("webhook_deliveries")
+}
+
+// ============================================================================
+// SYSTEM: AUDIT, NOTIFICATIONS, SETTINGS
+// ============================================================================
+
+model AuditLog {
+  id         String  @id @default(uuid()) @db.Uuid
+  userId     String? @db.Uuid
+  user       User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+  action     String
+  targetType String?
+  targetId   String?
+  ip         String?
+  metadata   Json?
+
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([action])
+  @@map("audit_logs")
+}
+
+model Notification {
+  id      String  @id @default(uuid()) @db.Uuid
+  userId  String  @db.Uuid
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type    String
+  title   String
+  body    String?
+  readAt  DateTime?
+  data    Json?
+
+  createdAt DateTime @default(now())
+
+  @@index([userId, readAt])
+  @@map("notifications")
+}
+
+model SystemSetting {
+  id    String @id @default(uuid()) @db.Uuid
+  key   String @unique
+  value Json
+
+  updatedAt DateTime @updatedAt
+
+  @@map("system_settings")
+}
