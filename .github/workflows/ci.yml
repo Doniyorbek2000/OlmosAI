@@ -1,0 +1,81 @@
+name: CI
+
+on:
+  push:
+    branches: [main, 'claude/**']
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  node:
+    name: Node (typecheck · test · build)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile=false
+      - name: Generate Prisma client
+        run: pnpm --filter @veyra/database generate
+        env:
+          DATABASE_URL: postgresql://u:p@localhost:5432/veyra
+      - name: Typecheck
+        run: pnpm typecheck
+      - name: Unit tests
+        run: pnpm test
+      - name: Build
+        run: pnpm build
+        env:
+          NEXT_PUBLIC_API_URL: http://localhost:4000
+
+  python-workers:
+    name: Python workers (ruff · pytest)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install worker framework + test deps
+        working-directory: services/ai-workers/_shared
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+          pip install pytest ruff
+      - name: Ruff
+        working-directory: services/ai-workers/_shared
+        run: ruff check veyra_worker
+      - name: Pytest (procedural generator + worker app)
+        working-directory: services/ai-workers/_shared
+        run: pytest -q
+
+  docker:
+    name: Docker build (smoke)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate compose
+        run: docker compose -f infra/docker/docker-compose.yml config --quiet
+      - name: Build TripoSR CPU worker image
+        run: docker build -f services/ai-workers/triposr/Dockerfile -t veyra/triposr:ci .
+
+  security:
+    name: Secret scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
