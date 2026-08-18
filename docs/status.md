@@ -77,9 +77,19 @@ Legend: ✅ implemented + tested · 🟩 implemented · 🟨 scaffolded/partial 
   and asset.created — signing + retry + endpoint-selection unit tested
 - ✅ Web /api-keys (developer) page: keys + webhooks + usage example
 
-## Phase 8 — Admin & observability
-- 🟩 Admin data model (providers/workers/analytics); Prometheus metrics in workers
-- 🟨 Admin panel UI, OpenTelemetry wiring — partial
+## Phase 8 — Admin & observability ✅
+- ✅ Admin API (ADMIN-role guarded): platform overview (users, revenue/MRR,
+  credits granted/consumed, jobs by status, queue depth, storage, API calls),
+  users/jobs listing + search, provider controls (enable/disable/drain/priority/
+  cost → rebuilds live registry), worker controls — no arbitrary command exec
+- ✅ Observability: Prometheus metrics on the API (/api/metrics via prom-client:
+  generations, duration, queue wait, credits captured, webhook deliveries +
+  default process metrics) and workers (/metrics); pino structured logs with
+  request/job/worker ids; OTel-compatible naming; Prometheus+Grafana compose
+  profile + scrape config
+- ✅ Admin web page (overview stats + provider enable/disable/drain); admin nav
+  shown only to ADMIN; seed can elevate ADMIN_EMAIL — admin service + metrics
+  unit tested
 
 ## Phases 9–10 — Character/motion & world
 - 🟨 HY-Motion / HY-World worker scaffolds + docs, feature-flagged off (license review)
@@ -101,9 +111,12 @@ implemented and tested; the geometry-optimization (retopo/decimate/LOD) asset
 pass is the remaining piece (Phase 4).
 
 ## Verification
-- 54 Node unit tests (types, config, ai-sdk router/breaker/executor, storage,
-  auth, api credit-ledger + mode-resolver + workflow-engine + prompt-parser +
-  png/concept-image + game-ready) + 19 Python worker tests (7 generation, 12
-  asset-worker) — all green
+- 86 Node unit tests (types, config, ai-sdk router/breaker/executor, storage,
+  auth, and api: credit-ledger, mode-resolver, workflow-engine, prompt-parser,
+  png/concept-image, game-ready, billing event-application + stripe-normalizer,
+  api-key service, webhook signing/backoff + emit, admin aggregation, metrics)
+  + 19 Python worker tests (7 generation, 12 asset-worker) — all green
+- `pnpm build`/`typecheck`/`test` pass; `next build` passes; Prisma schema
+  validates; docker-compose config validates
 - `pnpm build`, `pnpm typecheck`, `pnpm test` pass; `next build` passes;
   Prisma schema validates; docker-compose config validates

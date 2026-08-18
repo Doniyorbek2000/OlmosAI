@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { Boxes, LayoutDashboard, Coins, FolderOpen, Wand2, LogOut, Image as ImageIcon, Type, CreditCard, KeyRound } from 'lucide-react';
+import { Boxes, LayoutDashboard, Coins, FolderOpen, Wand2, LogOut, Image as ImageIcon, Type, CreditCard, KeyRound, Shield } from 'lucide-react';
 import { api } from '@/lib/api';
 import { brand } from '@/lib/brand';
 import { cn } from '@/lib/utils';
@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button';
 interface Me {
   email: string;
   displayName?: string;
+  role?: string;
   creditBalance?: { balance: number; reserved: number };
   subscription?: { plan?: { name: string } };
 }
@@ -77,6 +78,20 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               </Link>
             );
           })}
+          {me?.role === 'ADMIN' && (
+            <Link
+              href="/admin"
+              className={cn(
+                'flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors',
+                pathname.startsWith('/admin')
+                  ? 'bg-surface-hover text-content'
+                  : 'text-content-muted hover:bg-surface-hover hover:text-content',
+              )}
+            >
+              <Shield className="h-4 w-4" />
+              Admin
+            </Link>
+          )}
         </nav>
         <div className="border-t border-border p-3">
           <div className="mb-2 flex items-center justify-between rounded-lg bg-surface-raised px-3 py-2 text-sm">

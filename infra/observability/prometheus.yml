@@ -1,0 +1,14 @@
+# Prometheus scrape config for VEYRA 3D.
+# API metrics: /api/metrics ; AI + asset workers: /metrics
+global:
+  scrape_interval: 15s
+
+scrape_configs:
+  - job_name: veyra-api
+    metrics_path: /api/metrics
+    static_configs:
+      - targets: ['api:4000']
+  - job_name: veyra-workers
+    metrics_path: /metrics
+    static_configs:
+      - targets: ['triposr:8001', 'asset-worker:8010']

@@ -1,6 +1,7 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import type { BullJobQueue } from '@veyra/queue';
 import { PrismaService } from '../prisma/prisma.service';
+import { MetricsService } from '../metrics/metrics.service';
 import { WEBHOOK_QUEUE, type WebhookDeliveryJobData } from './webhook.queue';
 import { retryDelayMs, signWebhook, WEBHOOK_MAX_ATTEMPTS } from './webhook-signing';
 
@@ -16,6 +17,7 @@ export class WebhookDeliveryProcessor {
 
   constructor(
     private readonly prisma: PrismaService,
+    private readonly metrics: MetricsService,
     @Inject(WEBHOOK_QUEUE) private readonly queue: BullJobQueue<WebhookDeliveryJobData>,
   ) {}
 
@@ -66,6 +68,7 @@ export class WebhookDeliveryProcessor {
     }
 
     if (ok) {
+      this.metrics.recordWebhookDelivery('delivered');
       await this.prisma.webhookDelivery.update({
         where: { id: deliveryId },
         data: { status: 'DELIVERED', attempts: attempt, responseStatus, deliveredAt: new Date() },
@@ -86,6 +89,7 @@ export class WebhookDeliveryProcessor {
       });
       await this.queue.add(delivery.event, { deliveryId }, { jobId: `${deliveryId}:${attempt}`, delayMs: delay });
     } else {
+      this.metrics.recordWebhookDelivery('failed');
       await this.prisma.webhookDelivery.update({
         where: { id: deliveryId },
         data: { status: 'FAILED', attempts: attempt, responseStatus },

@@ -16,6 +16,7 @@ import { CreditsService } from '../billing/credits.service';
 import { AssetQualityService } from '../assets/asset-quality.service';
 import { JobEventsService } from '../jobs/job-events.service';
 import { WebhooksService } from '../webhooks/webhooks.service';
+import { MetricsService } from '../metrics/metrics.service';
 import { TextTo3DWorkflow, type TextTo3DInput } from '../workflows/text-to-3d.workflow';
 import { ProviderRegistryService } from './provider-registry.service';
 import { resolveMode } from './mode-resolver';
@@ -53,6 +54,7 @@ export class GenerationProcessor {
     private readonly orchestrator: ProviderRegistryService,
     private readonly textWorkflow: TextTo3DWorkflow,
     private readonly webhooks: WebhooksService,
+    private readonly metrics: MetricsService,
   ) {}
 
   async process(jobId: string): Promise<void> {
@@ -67,6 +69,8 @@ export class GenerationProcessor {
     }
     if (job.status === JobStatus.COMPLETED) return; // idempotent
 
+    const startedAtMs = Date.now();
+    this.metrics.recordQueueWait((startedAtMs - job.queuedAt.getTime()) / 1000);
     await this.setStatus(job.id, JobStatus.RUNNING, 3, 'DISPATCH', 'Starting');
     await this.prisma.generationJob.update({
       where: { id: job.id },
@@ -129,6 +133,8 @@ export class GenerationProcessor {
           },
         },
       });
+      this.metrics.recordGeneration(job.kind, 'completed', (Date.now() - startedAtMs) / 1000);
+      this.metrics.recordCreditsCaptured(job.reservedCredits);
       await this.emit(job.id, JobStatus.COMPLETED, 100, 'COMPLETED', 'Generation complete');
       await this.webhooks.emit(job.userId, 'generation.completed', { jobId: job.id, assetId: asset.id });
       await this.webhooks.emit(job.userId, 'asset.created', { assetId: asset.id, jobId: job.id });
@@ -150,6 +156,7 @@ export class GenerationProcessor {
           completedAt: new Date(),
         },
       });
+      this.metrics.recordGeneration(job.kind, 'failed');
       await this.emit(job.id, JobStatus.FAILED, 0, 'FAILED', verr.message);
       await this.webhooks.emit(job.userId, 'generation.failed', { jobId: job.id, code: verr.code });
     }

@@ -112,6 +112,20 @@ async function main() {
     update: {},
     create: { key: 'signup_enabled', value: true },
   });
+
+  // Optional: elevate a registered user to ADMIN for local/staging access.
+  const adminEmail = process.env.ADMIN_EMAIL;
+  if (adminEmail) {
+    const result = await prisma.user.updateMany({
+      where: { email: adminEmail.toLowerCase() },
+      data: { role: 'ADMIN' },
+    });
+    console.log(
+      result.count
+        ? `Elevated ${adminEmail} to ADMIN`
+        : `ADMIN_EMAIL ${adminEmail} not found (register first, then re-run seed)`,
+    );
+  }
   console.log('Seed complete');
 }
 

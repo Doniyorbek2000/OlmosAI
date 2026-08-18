@@ -135,6 +135,22 @@ services:
       minio: { condition: service_healthy }
     ports: ['8010:8010']
 
+  # ---- Observability (profile: observability) -------------------------------
+  prometheus:
+    profiles: ['observability']
+    image: prom/prometheus:latest
+    volumes:
+      - ../observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    ports: ['9090:9090']
+
+  grafana:
+    profiles: ['observability']
+    image: grafana/grafana:latest
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: admin
+    ports: ['3001:3000']
+    depends_on: ['prometheus']
+
 volumes:
   pgdata:
   redisdata:

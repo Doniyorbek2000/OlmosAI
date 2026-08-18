@@ -18,6 +18,8 @@ import { ProjectsModule } from './projects/projects.module';
 import { UploadsModule } from './uploads/uploads.module';
 import { GenerationsModule } from './generations/generations.module';
 import { HealthModule } from './health/health.module';
+import { MetricsModule } from './metrics/metrics.module';
+import { AdminModule } from './admin/admin.module';
 import { RequestIdMiddleware } from './common/request-id.middleware';
 
 @Module({
@@ -43,6 +45,8 @@ import { RequestIdMiddleware } from './common/request-id.middleware';
     UploadsModule,
     GenerationsModule,
     HealthModule,
+    MetricsModule,
+    AdminModule,
   ],
 })
 export class AppModule implements NestModule {
