@@ -1,0 +1,41 @@
+# GPU image — runs the real TripoSR model. Requires an NVIDIA GPU + nvidia
+# container runtime. Build args pin the upstream commit for reproducibility.
+#
+# Launch on a GPU host:
+#   docker build -f services/ai-workers/triposr/Dockerfile.gpu \
+#     --build-arg TRIPOSR_COMMIT=<sha> -t veyra/triposr:gpu .
+#   docker run --gpus all -p 8001:8001 --env-file .env \
+#     -e WORKER_GPU_AVAILABLE=true veyra/triposr:gpu
+FROM nvidia/cuda:12.1.1-cudnn8-runtime-ubuntu22.04
+
+ARG TRIPOSR_REPO=https://github.com/VAST-AI-Research/TripoSR
+ARG TRIPOSR_COMMIT=main
+
+ENV PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    WORKER_GPU_AVAILABLE=true \
+    DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3.10 python3-pip git libgl1 libglib2.0-0 \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Pinned upstream checkout — never track main in production (spec §86).
+RUN git clone ${TRIPOSR_REPO} /app/upstream \
+    && cd /app/upstream \
+    && git checkout ${TRIPOSR_COMMIT}
+
+RUN pip3 install torch --index-url https://download.pytorch.org/whl/cu121
+RUN pip3 install -r /app/upstream/requirements.txt || true
+RUN pip3 install -e /app/upstream
+
+COPY services/ai-workers/_shared /app/_shared
+RUN pip3 install /app/_shared
+COPY services/ai-workers/triposr/requirements.txt /app/requirements.txt
+RUN pip3 install -r /app/requirements.txt
+COPY services/ai-workers/triposr /app/triposr
+
+EXPOSE 8001
+CMD ["uvicorn", "triposr.worker:app", "--host", "0.0.0.0", "--port", "8001", "--app-dir", "/app"]

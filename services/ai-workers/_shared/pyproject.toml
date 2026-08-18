@@ -1,0 +1,26 @@
+[project]
+name = "veyra-worker"
+version = "0.1.0"
+description = "Shared framework for VEYRA 3D GPU AI workers (FastAPI base, S3, GLB tooling)"
+requires-python = ">=3.10"
+dependencies = [
+    "fastapi>=0.110",
+    "uvicorn[standard]>=0.29",
+    "pydantic>=2.6",
+    "boto3>=1.34",
+    "trimesh>=4.4",
+    "numpy>=1.26",
+    "httpx>=0.27",
+    "prometheus-client>=0.20",
+]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["veyra_worker*"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"

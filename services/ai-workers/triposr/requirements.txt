@@ -1,0 +1,13 @@
+# Base worker framework (installed from ../_shared).
+# For the real GPU model, additionally install the pinned TripoSR checkout and
+# torch build matching your CUDA — see MODEL.md and Dockerfile.gpu.
+fastapi>=0.110
+uvicorn[standard]>=0.29
+pydantic>=2.6
+boto3>=1.34
+trimesh>=4.4
+numpy>=1.26
+pillow>=10.0
+fast-simplification>=0.1.7
+httpx>=0.27
+prometheus-client>=0.20
