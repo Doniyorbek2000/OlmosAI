@@ -1,0 +1,37 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: veyra-api
+  namespace: veyra
+spec:
+  replicas: 2
+  selector:
+    matchLabels: { app: veyra-api }
+  template:
+    metadata:
+      labels: { app: veyra-api }
+    spec:
+      containers:
+        - name: api
+          image: veyra/api:latest
+          command: ['node', 'apps/api/dist/main.js']
+          ports: [{ containerPort: 4000 }]
+          envFrom:
+            - secretRef: { name: veyra-secrets }
+            - configMapRef: { name: veyra-config }
+          readinessProbe:
+            httpGet: { path: /api/health, port: 4000 }
+            initialDelaySeconds: 10
+            periodSeconds: 15
+          resources:
+            requests: { cpu: '250m', memory: '512Mi' }
+            limits: { cpu: '1', memory: '1Gi' }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: veyra-api
+  namespace: veyra
+spec:
+  selector: { app: veyra-api }
+  ports: [{ port: 80, targetPort: 4000 }]

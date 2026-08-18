@@ -1,0 +1,24 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: veyra-generation-worker
+  namespace: veyra
+spec:
+  replicas: 2
+  selector:
+    matchLabels: { app: veyra-generation-worker }
+  template:
+    metadata:
+      labels: { app: veyra-generation-worker }
+    spec:
+      # Node-side dispatcher: NO GPU request here — it only talks to workers.
+      containers:
+        - name: worker
+          image: veyra/api:latest
+          command: ['node', 'apps/api/dist/worker.js']
+          envFrom:
+            - secretRef: { name: veyra-secrets }
+            - configMapRef: { name: veyra-config }
+          resources:
+            requests: { cpu: '250m', memory: '512Mi' }
+            limits: { cpu: '1', memory: '1Gi' }
